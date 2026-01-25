@@ -1,4 +1,4 @@
-from src.db.repository.user_repository import UserRepository
+from db.repository.user_repository import UserRepository
 from sqlmodel import Session
 
 class UserService:

@@ -1,4 +1,4 @@
-from src.db.repository.budget_repository import BudgetRepository
+from db.repository.budget_repository import BudgetRepository
 from sqlmodel import Session
 
 class BudgetService:
@@ -18,3 +18,7 @@ class BudgetService:
         # new_budget = self._repository.create_budget(user_id, budget_data)
         # return new_budget
         return self._repository.create_budget(session, budget_data)
+    
+    def add_people_to_budget(self, session: Session, budget_id: str, people: list[dict]):
+        # Implement the logic to add people to a budget
+        return self._repository.add_people_to_budget(session, budget_id, people)

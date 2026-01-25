@@ -1,8 +1,14 @@
 from sqlmodel import SQLModel, create_engine, Session
-from src.config import get_settings
+from config import get_settings
+import logging as log
 
-settings = get_settings()
-engine = create_engine(settings.database_url, echo=settings.debug)
+try:
+    log.info("Creating database engine")
+    settings = get_settings()
+    engine = create_engine(settings.database_url, echo=settings.debug)
+except Exception as e:
+    log.error("Error creating database engine: %s", e)
+    raise
 
 def get_session():
     with Session(engine) as session:

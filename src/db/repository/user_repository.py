@@ -1,6 +1,6 @@
 from sqlmodel import select, Session
 
-from src.db.model.user import User
+from db.model.user import User
 
 class UserRepository:
     def __init__(self):

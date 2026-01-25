@@ -1,3 +1,4 @@
+from pydantic import BaseModel, Field
 from enum import Enum
 from pydantic import BaseModel
 from datetime import date
@@ -49,6 +50,10 @@ class Category(BaseModel):
     Id: uuid.UUID
     name: str
     description: str
+
+class Person(BaseModel):
+    id: str | None = Field(default=None, title="person identifier")
+    name: str | None = Field(default=None, title="person name")
 
 class RecurringType(Enum):
     ONE_OFF = 1
