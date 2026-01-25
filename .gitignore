@@ -68,10 +68,6 @@ coverage.xml
 # pipenv
 pipenv.lock
 
-# dotenv
-.env
-.env.*
-
 # Docker
 *.pid
 
