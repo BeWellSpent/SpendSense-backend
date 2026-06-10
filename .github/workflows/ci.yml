@@ -26,8 +26,12 @@ jobs:
           chmod +x /usr/local/bin/buf
 
       - name: Authenticate buf
-        if: ${{ secrets.BUF_TOKEN != '' }}
-        run: echo "${{ secrets.BUF_TOKEN }}" | buf registry login buf.build --token-stdin
+        env:
+          BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+        run: |
+          if [ -n "$BUF_TOKEN" ]; then
+            echo "$BUF_TOKEN" | buf registry login buf.build --token-stdin
+          fi
 
       - name: Generate proto code
         run: buf generate
