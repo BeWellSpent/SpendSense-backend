@@ -37,7 +37,7 @@ jobs:
       - name: Install sops
         run: |
           curl -sSL \
-            "https://github.com/mozilla/sops/releases/latest/download/sops-v3.9.5.linux.amd64" \
+            "https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64" \
             -o /usr/local/bin/sops
           chmod +x /usr/local/bin/sops
 
