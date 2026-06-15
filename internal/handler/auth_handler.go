@@ -16,6 +16,18 @@ func NewAuthHandler(svc *service.AuthService) *AuthHandler {
 	return &AuthHandler{svc: svc}
 }
 
+func (h *AuthHandler) Register(ctx context.Context, req *connect.Request[v1.RegisterRequest]) (*connect.Response[v1.RegisterResponse], error) {
+	result, err := h.svc.Register(ctx, req.Msg.Email, req.Msg.Password, req.Msg.FirstName, req.Msg.LastName)
+	if err != nil {
+		return nil, toConnectError(err)
+	}
+	return connect.NewResponse(&v1.RegisterResponse{
+		AccessToken: result.AccessToken,
+		TokenType:   "bearer",
+		ExpiresIn:   result.ExpiresIn,
+	}), nil
+}
+
 func (h *AuthHandler) Login(ctx context.Context, req *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	result, err := h.svc.Login(ctx, req.Msg.Email, req.Msg.Password)
 	if err != nil {

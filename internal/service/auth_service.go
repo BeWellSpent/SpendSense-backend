@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/mail"
+	"strings"
+	"unicode"
 
 	"github.com/google/uuid"
 	"github.com/mauro-afa91/spendsense/internal/apperr"
@@ -119,4 +122,74 @@ func (s *AuthService) GoogleExchange(ctx context.Context, code, redirectURI stri
 
 func (s *AuthService) GoogleAuthURL(state string) string {
 	return s.google.AuthCodeURL(state)
+}
+
+type RegisterResult struct {
+	AccessToken string
+	ExpiresIn   int64
+}
+
+func (s *AuthService) Register(ctx context.Context, email, password, firstName, lastName string) (RegisterResult, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if _, err := mail.ParseAddress(email); err != nil {
+		return RegisterResult{}, apperr.Invalid("invalid email address")
+	}
+	if err := validatePassword(password); err != nil {
+		return RegisterResult{}, err
+	}
+
+	_, err := s.users.GetByEmail(ctx, email)
+	if err == nil {
+		return RegisterResult{}, apperr.Duplicate("user", "email", email)
+	}
+	var notFound *apperr.NotFoundError
+	if !errors.As(err, &notFound) {
+		return RegisterResult{}, err
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return RegisterResult{}, fmt.Errorf("auth: hash password: %w", err)
+	}
+	hashed := string(hash)
+	fn := firstName
+	ln := lastName
+	user, err := s.users.Create(ctx, db.CreateUserParams{
+		Email:          email,
+		HashedPassword: &hashed,
+		FirstName:      &fn,
+		LastName:       &ln,
+	})
+	if err != nil {
+		return RegisterResult{}, fmt.Errorf("auth: create user: %w", err)
+	}
+
+	token, err := s.jwt.GenerateToken(user.ID)
+	if err != nil {
+		return RegisterResult{}, fmt.Errorf("auth: generate token: %w", err)
+	}
+	return RegisterResult{AccessToken: token, ExpiresIn: s.jwt.LifetimeSeconds()}, nil
+}
+
+func validatePassword(password string) error {
+	if len(password) < 8 {
+		return apperr.Invalid("password must be at least 8 characters")
+	}
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
+	for _, c := range password {
+		switch {
+		case unicode.IsUpper(c):
+			hasUpper = true
+		case unicode.IsLower(c):
+			hasLower = true
+		case unicode.IsDigit(c):
+			hasDigit = true
+		case unicode.IsPunct(c) || unicode.IsSymbol(c):
+			hasSpecial = true
+		}
+	}
+	if !hasUpper || !hasLower || !hasDigit || !hasSpecial {
+		return apperr.Invalid("password must contain uppercase, lowercase, digit, and special character")
+	}
+	return nil
 }

@@ -63,6 +63,7 @@ func main() {
 
 	// Procedures that don't require authentication
 	bypass := map[string]bool{
+		spendsensev1connect.AuthServiceRegisterProcedure:           true,
 		spendsensev1connect.AuthServiceLoginProcedure:              true,
 		spendsensev1connect.AuthServiceGetGoogleAuthURLProcedure:   true,
 		spendsensev1connect.AuthServiceExchangeGoogleCodeProcedure: true,

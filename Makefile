@@ -1,13 +1,10 @@
-.PHONY: generate buf-update run test build tidy
+.PHONY: generate run test build tidy
 
 ENV ?= dev
 
 generate:
 	buf generate
 	sqlc generate
-
-buf-update:
-	buf dep update
 
 run:
 	ENV=$(ENV) go run ./cmd/server

@@ -55,13 +55,14 @@ GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
 
 Apply migrations from the `SpendSense-Database` repo before starting this service.
 
-### 3. Pin the proto dependency
+### 3. Authenticate with the Buf Schema Registry
 
 ```powershell
-buf dep update
+buf registry login buf.build
+# Enter your BSR token when prompted (generate one at buf.build/settings/user)
 ```
 
-This creates `buf.lock`, pinning the exact version of the proto module from the BSR. Commit this file.
+This is required to pull the proto module from BSR. Without it, `buf generate` will fail with a "resource not found" error even though the module is public.
 
 ### 4. Generate code
 
@@ -75,13 +76,13 @@ sqlc generate
 
 > `buf generate` **must** run before `go build` — the handlers import from the `gen/` directory which only exists after generation.
 
-### 5. Download dependencies
+### 6. Download dependencies
 
 ```powershell
 go mod tidy
 ```
 
-### 6. Start the server
+### 7. Start the server
 
 ```powershell
 go run ./cmd/server
@@ -113,7 +114,6 @@ make run        # go run ./cmd/server
 make test       # go test ./...
 make build      # compile binary to bin/
 make generate   # buf generate + sqlc generate
-make buf-update # update buf.lock to latest proto version
 make tidy       # go mod tidy
 ```
 
@@ -124,11 +124,8 @@ make tidy       # go mod tidy
 When the `SpendSense-proto` repo publishes a new version:
 
 ```powershell
-make buf-update   # updates buf.lock to the new version
-make generate     # regenerates Go code from the new protos
+make generate   # fetches latest proto from BSR and regenerates Go code
 ```
-
-Commit the updated `buf.lock`.
 
 ---
 
