@@ -1,3 +1,5 @@
+-- +goose Up
+
 CREATE TABLE users (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email           VARCHAR(255) NOT NULL UNIQUE,
@@ -103,3 +105,18 @@ INSERT INTO category_type (name) VALUES ('Expense'), ('Saving'), ('Income');
 INSERT INTO payment_type (name) VALUES
     ('Cash'), ('Credit'), ('Debit'), ('Digital Wallet'),
     ('Bank Transfer'), ('Crypto'), ('Investment'), ('Other');
+
+-- +goose Down
+
+DROP TABLE IF EXISTS transaction CASCADE;
+DROP TABLE IF EXISTS payment_methods CASCADE;
+DROP TABLE IF EXISTS payment_type CASCADE;
+DROP TABLE IF EXISTS category CASCADE;
+DROP TABLE IF EXISTS category_type CASCADE;
+DROP TABLE IF EXISTS transaction_frequency CASCADE;
+DROP TABLE IF EXISTS transaction_type CASCADE;
+DROP TABLE IF EXISTS income_to_budget_mapping CASCADE;
+DROP TABLE IF EXISTS budget_to_user_mapping CASCADE;
+DROP TABLE IF EXISTS budget CASCADE;
+DROP TABLE IF EXISTS oauth_account CASCADE;
+DROP TABLE IF EXISTS users CASCADE;

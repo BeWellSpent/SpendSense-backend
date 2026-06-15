@@ -41,6 +41,9 @@ jobs:
             -o /usr/local/bin/sops
           chmod +x /usr/local/bin/sops
 
+      - name: Install goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@latest
+
       - name: Decrypt secrets
         env:
           SOPS_AGE_KEY: ${{ secrets.AGE_SECRET_KEY }}
@@ -48,8 +51,8 @@ jobs:
 
       - name: Run migrations
         run: |
-          export DATABASE_URL=$(grep '^DATABASE_URL=' .env.dev | cut -d= -f2-)
-          go run ./cmd/migrate up
+          DATABASE_URL=$(grep '^DATABASE_URL=' .env.dev | cut -d= -f2-)
+          goose -dir ./internal/db/migrations postgres "$DATABASE_URL" up
 
       - name: Download dependencies
         run: go mod download

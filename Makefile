@@ -25,7 +25,9 @@ secrets-decrypt:
 	sops --decrypt --output .env.$(ENV) .env.$(ENV).enc
 
 migrate:
-	@export DATABASE_URL=$$(grep '^DATABASE_URL=' .env.$(ENV) | cut -d= -f2-) && go run ./cmd/migrate up
+	@DATABASE_URL=$$(grep '^DATABASE_URL=' .env.$(ENV) | cut -d= -f2-) && \
+	 goose -dir ./internal/db/migrations postgres "$$DATABASE_URL" up
 
 migrate-down:
-	@export DATABASE_URL=$$(grep '^DATABASE_URL=' .env.$(ENV) | cut -d= -f2-) && go run ./cmd/migrate down
+	@DATABASE_URL=$$(grep '^DATABASE_URL=' .env.$(ENV) | cut -d= -f2-) && \
+	 goose -dir ./internal/db/migrations postgres "$$DATABASE_URL" down
