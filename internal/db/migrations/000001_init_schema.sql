@@ -95,20 +95,21 @@ CREATE TABLE IF NOT EXISTS transaction (
     transaction_type_id      INTEGER REFERENCES transaction_type(id)
 );
 
-INSERT INTO transaction_type (name) VALUES ('Fixed'), ('Variable')
-    ON CONFLICT (name) DO NOTHING;
+INSERT INTO transaction_type (name)
+    SELECT v FROM (VALUES ('Fixed'), ('Variable')) AS t(v)
+    WHERE v NOT IN (SELECT name FROM transaction_type);
 
-INSERT INTO transaction_frequency (name) VALUES
-    ('One-off'), ('Weekly'), ('Bi-weekly'), ('Monthly'), ('Yearly')
-    ON CONFLICT (name) DO NOTHING;
+INSERT INTO transaction_frequency (name)
+    SELECT v FROM (VALUES ('One-off'), ('Weekly'), ('Bi-weekly'), ('Monthly'), ('Yearly')) AS t(v)
+    WHERE v NOT IN (SELECT name FROM transaction_frequency);
 
-INSERT INTO category_type (name) VALUES ('Expense'), ('Saving'), ('Income')
-    ON CONFLICT (name) DO NOTHING;
+INSERT INTO category_type (name)
+    SELECT v FROM (VALUES ('Expense'), ('Saving'), ('Income')) AS t(v)
+    WHERE v NOT IN (SELECT name FROM category_type);
 
-INSERT INTO payment_type (name) VALUES
-    ('Cash'), ('Credit'), ('Debit'), ('Digital Wallet'),
-    ('Bank Transfer'), ('Crypto'), ('Investment'), ('Other')
-    ON CONFLICT (name) DO NOTHING;
+INSERT INTO payment_type (name)
+    SELECT v FROM (VALUES ('Cash'), ('Credit'), ('Debit'), ('Digital Wallet'), ('Bank Transfer'), ('Crypto'), ('Investment'), ('Other')) AS t(v)
+    WHERE v NOT IN (SELECT name FROM payment_type);
 
 -- +goose Down
 
