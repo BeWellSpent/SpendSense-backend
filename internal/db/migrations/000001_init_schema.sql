@@ -1,6 +1,6 @@
 -- +goose Up
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email           VARCHAR(255) NOT NULL UNIQUE,
     hashed_password TEXT,
@@ -12,7 +12,7 @@ CREATE TABLE users (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE oauth_account (
+CREATE TABLE IF NOT EXISTS oauth_account (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     oauth_name    VARCHAR(50) NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE oauth_account (
     UNIQUE (oauth_name, account_id)
 );
 
-CREATE TABLE budget (
+CREATE TABLE IF NOT EXISTS budget (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name       VARCHAR(100) NOT NULL,
@@ -30,14 +30,14 @@ CREATE TABLE budget (
     active     BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-CREATE TABLE budget_to_user_mapping (
+CREATE TABLE IF NOT EXISTS budget_to_user_mapping (
     id        SERIAL PRIMARY KEY,
     budget_id UUID NOT NULL REFERENCES budget(id) ON DELETE CASCADE,
     user_name VARCHAR(100),
     user_id   UUID REFERENCES users(id)
 );
 
-CREATE TABLE income_to_budget_mapping (
+CREATE TABLE IF NOT EXISTS income_to_budget_mapping (
     id        SERIAL PRIMARY KEY,
     budget_id UUID NOT NULL REFERENCES budget(id) ON DELETE CASCADE,
     user_id   UUID REFERENCES users(id),
@@ -46,41 +46,41 @@ CREATE TABLE income_to_budget_mapping (
     recurring BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE transaction_type (
+CREATE TABLE IF NOT EXISTS transaction_type (
     id   SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL
+    name VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE transaction_frequency (
+CREATE TABLE IF NOT EXISTS transaction_frequency (
     id   SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL
+    name VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE category_type (
+CREATE TABLE IF NOT EXISTS category_type (
     id   SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL
+    name VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE payment_type (
+CREATE TABLE IF NOT EXISTS payment_type (
     id   SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL
+    name VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE category (
+CREATE TABLE IF NOT EXISTS category (
     id      SERIAL PRIMARY KEY,
     name    VARCHAR(100) NOT NULL,
     type_id INTEGER REFERENCES category_type(id),
     user_id UUID REFERENCES users(id)
 );
 
-CREATE TABLE payment_methods (
+CREATE TABLE IF NOT EXISTS payment_methods (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name            VARCHAR(100) NOT NULL,
     payment_type_id INTEGER REFERENCES payment_type(id),
     user_id         UUID REFERENCES users(id)
 );
 
-CREATE TABLE transaction (
+CREATE TABLE IF NOT EXISTS transaction (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name                     VARCHAR(100),
     amount                   NUMERIC(15, 4) NOT NULL DEFAULT 0,
@@ -95,16 +95,20 @@ CREATE TABLE transaction (
     transaction_type_id      INTEGER REFERENCES transaction_type(id)
 );
 
-INSERT INTO transaction_type (name) VALUES ('Fixed'), ('Variable');
+INSERT INTO transaction_type (name) VALUES ('Fixed'), ('Variable')
+    ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO transaction_frequency (name) VALUES
-    ('One-off'), ('Weekly'), ('Bi-weekly'), ('Monthly'), ('Yearly');
+    ('One-off'), ('Weekly'), ('Bi-weekly'), ('Monthly'), ('Yearly')
+    ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO category_type (name) VALUES ('Expense'), ('Saving'), ('Income');
+INSERT INTO category_type (name) VALUES ('Expense'), ('Saving'), ('Income')
+    ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO payment_type (name) VALUES
     ('Cash'), ('Credit'), ('Debit'), ('Digital Wallet'),
-    ('Bank Transfer'), ('Crypto'), ('Investment'), ('Other');
+    ('Bank Transfer'), ('Crypto'), ('Investment'), ('Other')
+    ON CONFLICT (name) DO NOTHING;
 
 -- +goose Down
 
