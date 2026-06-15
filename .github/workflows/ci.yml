@@ -34,6 +34,18 @@ jobs:
       - name: Generate proto code
         run: buf generate
 
+      - name: Install sops
+        run: |
+          curl -sSL \
+            "https://github.com/mozilla/sops/releases/latest/download/sops-v3.9.5.linux.amd64" \
+            -o /usr/local/bin/sops
+          chmod +x /usr/local/bin/sops
+
+      - name: Decrypt secrets
+        env:
+          SOPS_AGE_KEY: ${{ secrets.AGE_SECRET_KEY }}
+        run: sops --decrypt --output .env.dev .env.dev.enc
+
       - name: Download dependencies
         run: go mod download
 

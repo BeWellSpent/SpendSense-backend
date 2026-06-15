@@ -1,4 +1,4 @@
-.PHONY: generate run test build tidy
+.PHONY: generate run test build tidy secrets-encrypt secrets-decrypt
 
 ENV ?= dev
 
@@ -17,3 +17,9 @@ test:
 
 tidy:
 	go mod tidy
+
+secrets-encrypt:
+	sops --encrypt --output .env.$(ENV).enc .env.$(ENV)
+
+secrets-decrypt:
+	sops --decrypt --output .env.$(ENV) .env.$(ENV).enc
