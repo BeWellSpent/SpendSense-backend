@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -17,8 +18,11 @@ type TransactionRepository interface {
 	Update(ctx context.Context, arg db.UpdateTransactionParams) (db.Transaction, error)
 	Delete(ctx context.Context, arg db.DeleteTransactionParams) error
 
-	ListCategories(ctx context.Context, userID uuid.UUID) ([]db.Category, error)
-	CreateCategory(ctx context.Context, arg db.CreateCategoryParams) (db.Category, error)
+	GetCategory(ctx context.Context, id int32) (db.GetCategoryRow, error)
+	ListCategories(ctx context.Context, userID uuid.UUID) ([]db.ListCategoriesRow, error)
+	CreateCategory(ctx context.Context, arg db.CreateCategoryParams) (db.CreateCategoryRow, error)
+	UpdateCategory(ctx context.Context, arg db.UpdateCategoryParams) (db.UpdateCategoryRow, error)
+	DeleteCategoryAndReassign(ctx context.Context, arg db.DeleteCategoryAndReassignParams) error
 
 	ListPaymentMethods(ctx context.Context, userID uuid.UUID) ([]db.ListPaymentMethodsRow, error)
 	CreatePaymentMethod(ctx context.Context, arg db.CreatePaymentMethodParams) (db.PaymentMethod, error)
@@ -61,12 +65,32 @@ func (r *transactionRepository) Delete(ctx context.Context, arg db.DeleteTransac
 	return r.q.DeleteTransaction(ctx, arg)
 }
 
-func (r *transactionRepository) ListCategories(ctx context.Context, userID uuid.UUID) ([]db.Category, error) {
+func (r *transactionRepository) GetCategory(ctx context.Context, id int32) (db.GetCategoryRow, error) {
+	c, err := r.q.GetCategory(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.GetCategoryRow{}, apperr.NotFound("category", fmt.Sprintf("%d", id))
+	}
+	return c, err
+}
+
+func (r *transactionRepository) ListCategories(ctx context.Context, userID uuid.UUID) ([]db.ListCategoriesRow, error) {
 	return r.q.ListCategories(ctx, userID)
 }
 
-func (r *transactionRepository) CreateCategory(ctx context.Context, arg db.CreateCategoryParams) (db.Category, error) {
+func (r *transactionRepository) CreateCategory(ctx context.Context, arg db.CreateCategoryParams) (db.CreateCategoryRow, error) {
 	return r.q.CreateCategory(ctx, arg)
+}
+
+func (r *transactionRepository) UpdateCategory(ctx context.Context, arg db.UpdateCategoryParams) (db.UpdateCategoryRow, error) {
+	c, err := r.q.UpdateCategory(ctx, arg)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.UpdateCategoryRow{}, apperr.NotFound("category", fmt.Sprintf("%d", arg.ID))
+	}
+	return c, err
+}
+
+func (r *transactionRepository) DeleteCategoryAndReassign(ctx context.Context, arg db.DeleteCategoryAndReassignParams) error {
+	return r.q.DeleteCategoryAndReassign(ctx, arg)
 }
 
 func (r *transactionRepository) ListPaymentMethods(ctx context.Context, userID uuid.UUID) ([]db.ListPaymentMethodsRow, error) {

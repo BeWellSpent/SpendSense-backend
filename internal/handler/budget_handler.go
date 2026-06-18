@@ -434,13 +434,56 @@ func (h *BudgetHandler) ListCategories(ctx context.Context, _ *connect.Request[v
 	}
 	protos := make([]*v1.Category, len(cats))
 	for i, c := range cats {
-		typeID := int32(0)
-		if c.TypeID != nil {
-			typeID = *c.TypeID
-		}
-		protos[i] = &v1.Category{Id: c.ID, Name: c.Name, TypeId: typeID}
+		protos[i] = &v1.Category{Id: c.ID, Name: c.Name, IsSystem: c.IsSystem}
 	}
 	return connect.NewResponse(&v1.ListCategoriesResponse{Categories: protos}), nil
+}
+
+func (h *BudgetHandler) CreateCategory(ctx context.Context, req *connect.Request[v1.CreateCategoryRequest]) (*connect.Response[v1.CreateCategoryResponse], error) {
+	userID, err := h.currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cat, svcErr := h.transactions.CreateCategory(ctx, db.CreateCategoryParams{
+		Name:   req.Msg.Name,
+		UserID: userID,
+	})
+	if svcErr != nil {
+		return nil, toConnectError(svcErr)
+	}
+	return connect.NewResponse(&v1.CreateCategoryResponse{
+		Category: &v1.Category{Id: cat.ID, Name: cat.Name, IsSystem: cat.IsSystem},
+	}), nil
+}
+
+func (h *BudgetHandler) UpdateCategory(ctx context.Context, req *connect.Request[v1.UpdateCategoryRequest]) (*connect.Response[v1.UpdateCategoryResponse], error) {
+	userID, err := h.currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cat, svcErr := h.transactions.UpdateCategory(ctx, db.UpdateCategoryParams{
+		ID:     req.Msg.Id,
+		Name:   req.Msg.Name,
+		UserID: userID,
+	})
+	if svcErr != nil {
+		return nil, toConnectError(svcErr)
+	}
+	return connect.NewResponse(&v1.UpdateCategoryResponse{
+		Category: &v1.Category{Id: cat.ID, Name: cat.Name, IsSystem: cat.IsSystem},
+	}), nil
+}
+
+func (h *BudgetHandler) DeleteCategory(ctx context.Context, req *connect.Request[v1.DeleteCategoryRequest]) (*connect.Response[v1.DeleteCategoryResponse], error) {
+	userID, err := h.currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	svcErr := h.transactions.DeleteCategory(ctx, req.Msg.Id, req.Msg.ReplacementId, userID)
+	if svcErr != nil {
+		return nil, toConnectError(svcErr)
+	}
+	return connect.NewResponse(&v1.DeleteCategoryResponse{}), nil
 }
 
 func (h *BudgetHandler) ListPaymentMethods(ctx context.Context, _ *connect.Request[v1.ListPaymentMethodsRequest]) (*connect.Response[v1.ListPaymentMethodsResponse], error) {

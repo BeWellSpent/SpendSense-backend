@@ -34,16 +34,36 @@ RETURNING id, name, amount, planned_amount, date, renewal_date, recurring,
 DELETE FROM transaction
 WHERE id = $1 AND budget_id = $2;
 
+-- name: GetCategory :one
+SELECT id, name, type_id, is_system, user_id
+FROM category
+WHERE id = $1
+LIMIT 1;
+
 -- name: ListCategories :many
-SELECT id, name, type_id, user_id
+SELECT id, name, type_id, is_system, user_id
 FROM category
 WHERE user_id = $1::uuid OR user_id IS NULL
 ORDER BY name;
 
 -- name: CreateCategory :one
-INSERT INTO category (name, type_id, user_id)
-VALUES ($1, $2, $3)
-RETURNING id, name, type_id, user_id;
+INSERT INTO category (name, user_id)
+VALUES (sqlc.arg('name'), sqlc.arg('user_id')::uuid)
+RETURNING id, name, type_id, is_system, user_id;
+
+-- name: UpdateCategory :one
+UPDATE category
+SET name = sqlc.arg('name')
+WHERE id = sqlc.arg('id') AND user_id = sqlc.arg('user_id')::uuid AND is_system = FALSE
+RETURNING id, name, type_id, is_system, user_id;
+
+-- name: DeleteCategoryAndReassign :exec
+WITH moved AS (
+    UPDATE transaction SET category_id = sqlc.arg('replacement_id')
+    WHERE category_id = sqlc.arg('id')
+)
+DELETE FROM category
+WHERE category.id = sqlc.arg('id') AND category.user_id = sqlc.arg('user_id')::uuid AND category.is_system = FALSE;
 
 -- name: ListPaymentMethods :many
 SELECT pm.id, pm.name, pm.payment_type_id, pm.user_id, pt.name AS type_name

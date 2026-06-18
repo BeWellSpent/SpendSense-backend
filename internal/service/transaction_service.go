@@ -63,8 +63,45 @@ func (s *TransactionService) Delete(ctx context.Context, id, budgetID, userID uu
 	return s.transactions.Delete(ctx, db.DeleteTransactionParams{ID: id, BudgetID: &budgetID})
 }
 
-func (s *TransactionService) ListCategories(ctx context.Context, userID uuid.UUID) ([]db.Category, error) {
+func (s *TransactionService) GetCategory(ctx context.Context, id int32) (db.GetCategoryRow, error) {
+	return s.transactions.GetCategory(ctx, id)
+}
+
+func (s *TransactionService) ListCategories(ctx context.Context, userID uuid.UUID) ([]db.ListCategoriesRow, error) {
 	return s.transactions.ListCategories(ctx, userID)
+}
+
+func (s *TransactionService) CreateCategory(ctx context.Context, arg db.CreateCategoryParams) (db.CreateCategoryRow, error) {
+	return s.transactions.CreateCategory(ctx, arg)
+}
+
+func (s *TransactionService) UpdateCategory(ctx context.Context, arg db.UpdateCategoryParams) (db.UpdateCategoryRow, error) {
+	return s.transactions.UpdateCategory(ctx, arg)
+}
+
+func (s *TransactionService) DeleteCategory(ctx context.Context, id, replacementID int32, userID uuid.UUID) error {
+	cat, err := s.transactions.GetCategory(ctx, id)
+	if err != nil {
+		return err
+	}
+	if cat.IsSystem {
+		return apperr.Forbidden("system categories cannot be deleted")
+	}
+	if cat.UserID == nil || *cat.UserID != userID {
+		return apperr.Forbidden("access denied")
+	}
+	replacement, err := s.transactions.GetCategory(ctx, replacementID)
+	if err != nil {
+		return err
+	}
+	if replacement.UserID != nil && *replacement.UserID != userID {
+		return apperr.Forbidden("replacement category is not accessible")
+	}
+	return s.transactions.DeleteCategoryAndReassign(ctx, db.DeleteCategoryAndReassignParams{
+		ID:            id,
+		UserID:        userID,
+		ReplacementID: &replacementID,
+	})
 }
 
 func (s *TransactionService) ListPaymentMethods(ctx context.Context, userID uuid.UUID) ([]db.ListPaymentMethodsRow, error) {

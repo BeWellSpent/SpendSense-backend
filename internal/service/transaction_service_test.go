@@ -14,16 +14,19 @@ import (
 // ── Mock transaction repo ─────────────────────────────────────────────────────
 
 type mockTransactionRepo struct {
-	list                func(context.Context, db.ListTransactionsParams) ([]db.Transaction, error)
-	getByID             func(context.Context, uuid.UUID) (db.Transaction, error)
-	create              func(context.Context, db.CreateTransactionParams) (db.Transaction, error)
-	update              func(context.Context, db.UpdateTransactionParams) (db.Transaction, error)
-	delete              func(context.Context, db.DeleteTransactionParams) error
-	listCategories      func(context.Context, uuid.UUID) ([]db.Category, error)
-	createCategory      func(context.Context, db.CreateCategoryParams) (db.Category, error)
-	listPaymentMethods  func(context.Context, uuid.UUID) ([]db.ListPaymentMethodsRow, error)
-	createPaymentMethod func(context.Context, db.CreatePaymentMethodParams) (db.PaymentMethod, error)
-	updatePaymentMethod func(context.Context, db.UpdatePaymentMethodParams) (db.PaymentMethod, error)
+	list                    func(context.Context, db.ListTransactionsParams) ([]db.Transaction, error)
+	getByID                 func(context.Context, uuid.UUID) (db.Transaction, error)
+	create                  func(context.Context, db.CreateTransactionParams) (db.Transaction, error)
+	update                  func(context.Context, db.UpdateTransactionParams) (db.Transaction, error)
+	delete                  func(context.Context, db.DeleteTransactionParams) error
+	getCategory             func(context.Context, int32) (db.GetCategoryRow, error)
+	listCategories          func(context.Context, uuid.UUID) ([]db.ListCategoriesRow, error)
+	createCategory          func(context.Context, db.CreateCategoryParams) (db.CreateCategoryRow, error)
+	updateCategory          func(context.Context, db.UpdateCategoryParams) (db.UpdateCategoryRow, error)
+	deleteCategoryAndReassign func(context.Context, db.DeleteCategoryAndReassignParams) error
+	listPaymentMethods      func(context.Context, uuid.UUID) ([]db.ListPaymentMethodsRow, error)
+	createPaymentMethod     func(context.Context, db.CreatePaymentMethodParams) (db.PaymentMethod, error)
+	updatePaymentMethod     func(context.Context, db.UpdatePaymentMethodParams) (db.PaymentMethod, error)
 }
 
 func (m *mockTransactionRepo) List(ctx context.Context, arg db.ListTransactionsParams) ([]db.Transaction, error) {
@@ -61,18 +64,39 @@ func (m *mockTransactionRepo) Delete(ctx context.Context, arg db.DeleteTransacti
 	return nil
 }
 
-func (m *mockTransactionRepo) ListCategories(ctx context.Context, userID uuid.UUID) ([]db.Category, error) {
+func (m *mockTransactionRepo) GetCategory(ctx context.Context, id int32) (db.GetCategoryRow, error) {
+	if m.getCategory != nil {
+		return m.getCategory(ctx, id)
+	}
+	return db.GetCategoryRow{}, apperr.NotFound("category", "0")
+}
+
+func (m *mockTransactionRepo) ListCategories(ctx context.Context, userID uuid.UUID) ([]db.ListCategoriesRow, error) {
 	if m.listCategories != nil {
 		return m.listCategories(ctx, userID)
 	}
 	return nil, nil
 }
 
-func (m *mockTransactionRepo) CreateCategory(ctx context.Context, arg db.CreateCategoryParams) (db.Category, error) {
+func (m *mockTransactionRepo) CreateCategory(ctx context.Context, arg db.CreateCategoryParams) (db.CreateCategoryRow, error) {
 	if m.createCategory != nil {
 		return m.createCategory(ctx, arg)
 	}
-	return db.Category{}, nil
+	return db.CreateCategoryRow{}, nil
+}
+
+func (m *mockTransactionRepo) UpdateCategory(ctx context.Context, arg db.UpdateCategoryParams) (db.UpdateCategoryRow, error) {
+	if m.updateCategory != nil {
+		return m.updateCategory(ctx, arg)
+	}
+	return db.UpdateCategoryRow{}, nil
+}
+
+func (m *mockTransactionRepo) DeleteCategoryAndReassign(ctx context.Context, arg db.DeleteCategoryAndReassignParams) error {
+	if m.deleteCategoryAndReassign != nil {
+		return m.deleteCategoryAndReassign(ctx, arg)
+	}
+	return nil
 }
 
 func (m *mockTransactionRepo) ListPaymentMethods(ctx context.Context, userID uuid.UUID) ([]db.ListPaymentMethodsRow, error) {
@@ -218,4 +242,163 @@ func TestUpdatePaymentMethod_NotFound_WhenUserDoesNotOwnMethod(t *testing.T) {
 	var notFound *apperr.NotFoundError
 	require.ErrorAs(t, err, &notFound)
 	assert.Equal(t, "payment_method", notFound.Resource)
+}
+
+// ── CreateCategory tests ──────────────────────────────────────────────────────
+
+func TestCreateCategory_Success(t *testing.T) {
+	userID := uuid.New()
+
+	svc := NewTransactionService(
+		&mockTransactionRepo{
+			createCategory: func(_ context.Context, arg db.CreateCategoryParams) (db.CreateCategoryRow, error) {
+				assert.Equal(t, "Hobbies", arg.Name)
+				assert.Equal(t, userID, arg.UserID)
+				return db.CreateCategoryRow{ID: 42, Name: "Hobbies", IsSystem: false}, nil
+			},
+		},
+		&mockBudgetRepo{},
+	)
+
+	result, err := svc.CreateCategory(context.Background(), db.CreateCategoryParams{
+		Name:   "Hobbies",
+		UserID: userID,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(42), result.ID)
+	assert.Equal(t, "Hobbies", result.Name)
+	assert.False(t, result.IsSystem)
+}
+
+// ── UpdateCategory tests ──────────────────────────────────────────────────────
+
+func TestUpdateCategory_Success(t *testing.T) {
+	userID := uuid.New()
+
+	svc := NewTransactionService(
+		&mockTransactionRepo{
+			updateCategory: func(_ context.Context, arg db.UpdateCategoryParams) (db.UpdateCategoryRow, error) {
+				assert.Equal(t, int32(10), arg.ID)
+				assert.Equal(t, "Fun Money", arg.Name)
+				assert.Equal(t, userID, arg.UserID)
+				return db.UpdateCategoryRow{ID: 10, Name: "Fun Money", IsSystem: false}, nil
+			},
+		},
+		&mockBudgetRepo{},
+	)
+
+	result, err := svc.UpdateCategory(context.Background(), db.UpdateCategoryParams{
+		ID:     10,
+		Name:   "Fun Money",
+		UserID: userID,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "Fun Money", result.Name)
+}
+
+func TestUpdateCategory_NotFound(t *testing.T) {
+	svc := NewTransactionService(
+		&mockTransactionRepo{
+			updateCategory: func(_ context.Context, arg db.UpdateCategoryParams) (db.UpdateCategoryRow, error) {
+				return db.UpdateCategoryRow{}, apperr.NotFound("category", "99")
+			},
+		},
+		&mockBudgetRepo{},
+	)
+
+	_, err := svc.UpdateCategory(context.Background(), db.UpdateCategoryParams{
+		ID:     99,
+		Name:   "Ghost",
+		UserID: uuid.New(),
+	})
+
+	require.Error(t, err)
+	var notFound *apperr.NotFoundError
+	require.ErrorAs(t, err, &notFound)
+	assert.Equal(t, "category", notFound.Resource)
+}
+
+// ── DeleteCategory tests ──────────────────────────────────────────────────────
+
+func TestDeleteCategory_Success(t *testing.T) {
+	userID := uuid.New()
+	catID := int32(5)
+	replacementID := int32(1)
+
+	svc := NewTransactionService(
+		&mockTransactionRepo{
+			getCategory: func(_ context.Context, id int32) (db.GetCategoryRow, error) {
+				if id == catID {
+					return db.GetCategoryRow{ID: catID, Name: "Old", IsSystem: false, UserID: &userID}, nil
+				}
+				return db.GetCategoryRow{ID: replacementID, Name: "Entertainment", IsSystem: true}, nil
+			},
+			deleteCategoryAndReassign: func(_ context.Context, arg db.DeleteCategoryAndReassignParams) error {
+				assert.Equal(t, catID, arg.ID)
+				assert.Equal(t, userID, arg.UserID)
+				assert.Equal(t, &replacementID, arg.ReplacementID)
+				return nil
+			},
+		},
+		&mockBudgetRepo{},
+	)
+
+	err := svc.DeleteCategory(context.Background(), catID, replacementID, userID)
+	require.NoError(t, err)
+}
+
+func TestDeleteCategory_Forbidden_WhenSystemCategory(t *testing.T) {
+	userID := uuid.New()
+
+	svc := NewTransactionService(
+		&mockTransactionRepo{
+			getCategory: func(_ context.Context, id int32) (db.GetCategoryRow, error) {
+				return db.GetCategoryRow{ID: id, Name: "Entertainment", IsSystem: true}, nil
+			},
+		},
+		&mockBudgetRepo{},
+	)
+
+	err := svc.DeleteCategory(context.Background(), 1, 2, userID)
+	require.Error(t, err)
+	var forbidden *apperr.ForbiddenError
+	require.ErrorAs(t, err, &forbidden)
+}
+
+func TestDeleteCategory_Forbidden_WhenNotOwner(t *testing.T) {
+	userID := uuid.New()
+	otherUserID := uuid.New()
+	catID := int32(5)
+
+	svc := NewTransactionService(
+		&mockTransactionRepo{
+			getCategory: func(_ context.Context, id int32) (db.GetCategoryRow, error) {
+				return db.GetCategoryRow{ID: catID, Name: "Old", IsSystem: false, UserID: &otherUserID}, nil
+			},
+		},
+		&mockBudgetRepo{},
+	)
+
+	err := svc.DeleteCategory(context.Background(), catID, 1, userID)
+	require.Error(t, err)
+	var forbidden *apperr.ForbiddenError
+	require.ErrorAs(t, err, &forbidden)
+}
+
+func TestDeleteCategory_NotFound_WhenCategoryMissing(t *testing.T) {
+	svc := NewTransactionService(
+		&mockTransactionRepo{
+			getCategory: func(_ context.Context, id int32) (db.GetCategoryRow, error) {
+				return db.GetCategoryRow{}, apperr.NotFound("category", "99")
+			},
+		},
+		&mockBudgetRepo{},
+	)
+
+	err := svc.DeleteCategory(context.Background(), 99, 1, uuid.New())
+	require.Error(t, err)
+	var notFound *apperr.NotFoundError
+	require.ErrorAs(t, err, &notFound)
 }

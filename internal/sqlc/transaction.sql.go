@@ -13,24 +13,32 @@ import (
 )
 
 const createCategory = `-- name: CreateCategory :one
-INSERT INTO category (name, type_id, user_id)
-VALUES ($1, $2, $3)
-RETURNING id, name, type_id, user_id
+INSERT INTO category (name, user_id)
+VALUES ($1, $2::uuid)
+RETURNING id, name, type_id, is_system, user_id
 `
 
 type CreateCategoryParams struct {
-	Name   string     `json:"name"`
-	TypeID *int32     `json:"type_id"`
-	UserID *uuid.UUID `json:"user_id"`
+	Name   string    `json:"name"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
-func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error) {
-	row := q.db.QueryRow(ctx, createCategory, arg.Name, arg.TypeID, arg.UserID)
-	var i Category
+type CreateCategoryRow struct {
+	ID       int32      `json:"id"`
+	Name     string     `json:"name"`
+	TypeID   *int32     `json:"type_id"`
+	IsSystem bool       `json:"is_system"`
+	UserID   *uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (CreateCategoryRow, error) {
+	row := q.db.QueryRow(ctx, createCategory, arg.Name, arg.UserID)
+	var i CreateCategoryRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.TypeID,
+		&i.IsSystem,
 		&i.UserID,
 	)
 	return i, err
@@ -115,6 +123,26 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 	return i, err
 }
 
+const deleteCategoryAndReassign = `-- name: DeleteCategoryAndReassign :exec
+WITH moved AS (
+    UPDATE transaction SET category_id = $3
+    WHERE category_id = $1
+)
+DELETE FROM category
+WHERE category.id = $1 AND category.user_id = $2::uuid AND category.is_system = FALSE
+`
+
+type DeleteCategoryAndReassignParams struct {
+	ID            int32     `json:"id"`
+	UserID        uuid.UUID `json:"user_id"`
+	ReplacementID *int32    `json:"replacement_id"`
+}
+
+func (q *Queries) DeleteCategoryAndReassign(ctx context.Context, arg DeleteCategoryAndReassignParams) error {
+	_, err := q.db.Exec(ctx, deleteCategoryAndReassign, arg.ID, arg.UserID, arg.ReplacementID)
+	return err
+}
+
 const deleteTransaction = `-- name: DeleteTransaction :exec
 DELETE FROM transaction
 WHERE id = $1 AND budget_id = $2
@@ -128,6 +156,34 @@ type DeleteTransactionParams struct {
 func (q *Queries) DeleteTransaction(ctx context.Context, arg DeleteTransactionParams) error {
 	_, err := q.db.Exec(ctx, deleteTransaction, arg.ID, arg.BudgetID)
 	return err
+}
+
+const getCategory = `-- name: GetCategory :one
+SELECT id, name, type_id, is_system, user_id
+FROM category
+WHERE id = $1
+LIMIT 1
+`
+
+type GetCategoryRow struct {
+	ID       int32      `json:"id"`
+	Name     string     `json:"name"`
+	TypeID   *int32     `json:"type_id"`
+	IsSystem bool       `json:"is_system"`
+	UserID   *uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) GetCategory(ctx context.Context, id int32) (GetCategoryRow, error) {
+	row := q.db.QueryRow(ctx, getCategory, id)
+	var i GetCategoryRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.TypeID,
+		&i.IsSystem,
+		&i.UserID,
+	)
+	return i, err
 }
 
 const getTransactionByID = `-- name: GetTransactionByID :one
@@ -159,25 +215,34 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id uuid.UUID) (Transac
 }
 
 const listCategories = `-- name: ListCategories :many
-SELECT id, name, type_id, user_id
+SELECT id, name, type_id, is_system, user_id
 FROM category
 WHERE user_id = $1::uuid OR user_id IS NULL
 ORDER BY name
 `
 
-func (q *Queries) ListCategories(ctx context.Context, dollar_1 uuid.UUID) ([]Category, error) {
+type ListCategoriesRow struct {
+	ID       int32      `json:"id"`
+	Name     string     `json:"name"`
+	TypeID   *int32     `json:"type_id"`
+	IsSystem bool       `json:"is_system"`
+	UserID   *uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) ListCategories(ctx context.Context, dollar_1 uuid.UUID) ([]ListCategoriesRow, error) {
 	rows, err := q.db.Query(ctx, listCategories, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Category
+	var items []ListCategoriesRow
 	for rows.Next() {
-		var i Category
+		var i ListCategoriesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.TypeID,
+			&i.IsSystem,
 			&i.UserID,
 		); err != nil {
 			return nil, err
@@ -327,6 +392,40 @@ func (q *Queries) ListTransactions(ctx context.Context, arg ListTransactionsPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateCategory = `-- name: UpdateCategory :one
+UPDATE category
+SET name = $1
+WHERE id = $2 AND user_id = $3::uuid AND is_system = FALSE
+RETURNING id, name, type_id, is_system, user_id
+`
+
+type UpdateCategoryParams struct {
+	Name   string    `json:"name"`
+	ID     int32     `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type UpdateCategoryRow struct {
+	ID       int32      `json:"id"`
+	Name     string     `json:"name"`
+	TypeID   *int32     `json:"type_id"`
+	IsSystem bool       `json:"is_system"`
+	UserID   *uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (UpdateCategoryRow, error) {
+	row := q.db.QueryRow(ctx, updateCategory, arg.Name, arg.ID, arg.UserID)
+	var i UpdateCategoryRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.TypeID,
+		&i.IsSystem,
+		&i.UserID,
+	)
+	return i, err
 }
 
 const updatePaymentMethod = `-- name: UpdatePaymentMethod :one

@@ -26,10 +26,11 @@ type BudgetToUserMapping struct {
 }
 
 type Category struct {
-	ID     int32      `json:"id"`
-	Name   string     `json:"name"`
-	TypeID *int32     `json:"type_id"`
-	UserID *uuid.UUID `json:"user_id"`
+	ID       int32      `json:"id"`
+	Name     string     `json:"name"`
+	TypeID   *int32     `json:"type_id"`
+	UserID   *uuid.UUID `json:"user_id"`
+	IsSystem bool       `json:"is_system"`
 }
 
 type CategoryType struct {
