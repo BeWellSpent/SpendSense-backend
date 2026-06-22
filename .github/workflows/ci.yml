@@ -2,57 +2,21 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, 'feature/**']
+    branches-ignore: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  build:
-    name: Build and test
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version-file: go.mod
           cache: true
-
-      - name: Install buf
-        run: |
-          curl -sSL \
-            "https://github.com/bufbuild/buf/releases/latest/download/buf-Linux-x86_64" \
-            -o /usr/local/bin/buf
-          chmod +x /usr/local/bin/buf
-
-      - name: Authenticate buf
-        env:
-          BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
-        run: |
-          if [ -n "$BUF_TOKEN" ]; then
-            echo "$BUF_TOKEN" | buf registry login buf.build --token-stdin
-          fi
-
-      - name: Generate proto code
-        run: buf generate
-
-      - name: Install sops
-        run: |
-          curl -sSL \
-            "https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64" \
-            -o /usr/local/bin/sops
-          chmod +x /usr/local/bin/sops
-
-      - name: Decrypt secrets
-        env:
-          SOPS_AGE_KEY: ${{ secrets.AGE_SECRET_KEY }}
-        run: sops --decrypt --output .env.dev .env.dev.enc
-
-      - name: Run migrations
-        run: |
-          export DATABASE_URL=$(grep '^DATABASE_URL=' .env.dev | cut -d= -f2- | tr -d '\r"'"'")
-          go run ./cmd/migrate up
-
-      - name: Download dependencies
-        run: go mod download
 
       - name: Build
         run: go build ./...

@@ -47,7 +47,7 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 const createPaymentMethod = `-- name: CreatePaymentMethod :one
 INSERT INTO payment_methods (name, payment_type_id, user_id)
 VALUES ($1, $2, $3)
-RETURNING id, name, payment_type_id, user_id
+RETURNING id, name, payment_type_id, user_id, is_active
 `
 
 type CreatePaymentMethodParams struct {
@@ -64,6 +64,7 @@ func (q *Queries) CreatePaymentMethod(ctx context.Context, arg CreatePaymentMeth
 		&i.Name,
 		&i.PaymentTypeID,
 		&i.UserID,
+		&i.IsActive,
 	)
 	return i, err
 }
@@ -127,8 +128,10 @@ const deleteCategoryAndReassign = `-- name: DeleteCategoryAndReassign :exec
 WITH moved AS (
     UPDATE transaction SET category_id = $3
     WHERE category_id = $1
+      AND budget_id = $4::uuid
 )
-DELETE FROM category
+UPDATE category
+SET is_active = FALSE
 WHERE category.id = $1 AND category.user_id = $2::uuid AND category.is_system = FALSE
 `
 
@@ -136,10 +139,44 @@ type DeleteCategoryAndReassignParams struct {
 	ID            int32     `json:"id"`
 	UserID        uuid.UUID `json:"user_id"`
 	ReplacementID *int32    `json:"replacement_id"`
+	BudgetID      uuid.UUID `json:"budget_id"`
 }
 
 func (q *Queries) DeleteCategoryAndReassign(ctx context.Context, arg DeleteCategoryAndReassignParams) error {
-	_, err := q.db.Exec(ctx, deleteCategoryAndReassign, arg.ID, arg.UserID, arg.ReplacementID)
+	_, err := q.db.Exec(ctx, deleteCategoryAndReassign,
+		arg.ID,
+		arg.UserID,
+		arg.ReplacementID,
+		arg.BudgetID,
+	)
+	return err
+}
+
+const deletePaymentMethodAndReassign = `-- name: DeletePaymentMethodAndReassign :exec
+WITH moved AS (
+    UPDATE transaction SET payment_method_id = $3::uuid
+    WHERE payment_method_id = $1::uuid
+      AND budget_id = $4::uuid
+)
+UPDATE payment_methods
+SET is_active = FALSE
+WHERE id = $1::uuid AND user_id = $2::uuid
+`
+
+type DeletePaymentMethodAndReassignParams struct {
+	ID            uuid.UUID `json:"id"`
+	UserID        uuid.UUID `json:"user_id"`
+	ReplacementID uuid.UUID `json:"replacement_id"`
+	BudgetID      uuid.UUID `json:"budget_id"`
+}
+
+func (q *Queries) DeletePaymentMethodAndReassign(ctx context.Context, arg DeletePaymentMethodAndReassignParams) error {
+	_, err := q.db.Exec(ctx, deletePaymentMethodAndReassign,
+		arg.ID,
+		arg.UserID,
+		arg.ReplacementID,
+		arg.BudgetID,
+	)
 	return err
 }
 
@@ -186,6 +223,26 @@ func (q *Queries) GetCategory(ctx context.Context, id int32) (GetCategoryRow, er
 	return i, err
 }
 
+const getPaymentMethod = `-- name: GetPaymentMethod :one
+SELECT id, name, payment_type_id, user_id, is_active
+FROM payment_methods
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetPaymentMethod(ctx context.Context, id uuid.UUID) (PaymentMethod, error) {
+	row := q.db.QueryRow(ctx, getPaymentMethod, id)
+	var i PaymentMethod
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.PaymentTypeID,
+		&i.UserID,
+		&i.IsActive,
+	)
+	return i, err
+}
+
 const getTransactionByID = `-- name: GetTransactionByID :one
 SELECT id, name, amount, planned_amount, date, renewal_date, recurring,
        budget_id, category_id, payment_method_id, transaction_frequency_id, transaction_type_id
@@ -217,7 +274,7 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id uuid.UUID) (Transac
 const listCategories = `-- name: ListCategories :many
 SELECT id, name, type_id, is_system, user_id
 FROM category
-WHERE user_id = $1::uuid OR user_id IS NULL
+WHERE (user_id = $1::uuid AND is_active = TRUE) OR user_id IS NULL
 ORDER BY name
 `
 
@@ -259,7 +316,7 @@ const listPaymentMethods = `-- name: ListPaymentMethods :many
 SELECT pm.id, pm.name, pm.payment_type_id, pm.user_id, pt.name AS type_name
 FROM payment_methods pm
 LEFT JOIN payment_type pt ON pm.payment_type_id = pt.id
-WHERE pm.user_id = $1::uuid
+WHERE pm.user_id = $1::uuid AND pm.is_active = TRUE
 ORDER BY pm.name
 `
 
@@ -432,7 +489,7 @@ const updatePaymentMethod = `-- name: UpdatePaymentMethod :one
 UPDATE payment_methods
 SET name = $1
 WHERE id = $2 AND user_id = $3::uuid
-RETURNING id, name, payment_type_id, user_id
+RETURNING id, name, payment_type_id, user_id, is_active
 `
 
 type UpdatePaymentMethodParams struct {
@@ -449,6 +506,7 @@ func (q *Queries) UpdatePaymentMethod(ctx context.Context, arg UpdatePaymentMeth
 		&i.Name,
 		&i.PaymentTypeID,
 		&i.UserID,
+		&i.IsActive,
 	)
 	return i, err
 }

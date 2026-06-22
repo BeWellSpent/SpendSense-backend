@@ -479,7 +479,11 @@ func (h *BudgetHandler) DeleteCategory(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, err
 	}
-	svcErr := h.transactions.DeleteCategory(ctx, req.Msg.Id, req.Msg.ReplacementId, userID)
+	budgetID, err := uuid.Parse(req.Msg.BudgetId)
+	if err != nil {
+		return nil, toConnectError(apperr.Invalid("invalid budget id"))
+	}
+	svcErr := h.transactions.DeleteCategory(ctx, req.Msg.Id, req.Msg.ReplacementId, budgetID, userID)
 	if svcErr != nil {
 		return nil, toConnectError(svcErr)
 	}
@@ -557,6 +561,29 @@ func (h *BudgetHandler) UpdatePaymentMethod(ctx context.Context, req *connect.Re
 			Type: typeVal,
 		},
 	}), nil
+}
+
+func (h *BudgetHandler) DeletePaymentMethod(ctx context.Context, req *connect.Request[v1.DeletePaymentMethodRequest]) (*connect.Response[v1.DeletePaymentMethodResponse], error) {
+	userID, err := h.currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, err := uuid.Parse(req.Msg.Id)
+	if err != nil {
+		return nil, toConnectError(apperr.Invalid("invalid payment method id"))
+	}
+	replacementID, err := uuid.Parse(req.Msg.ReplacementId)
+	if err != nil {
+		return nil, toConnectError(apperr.Invalid("invalid replacement payment method id"))
+	}
+	budgetID, err := uuid.Parse(req.Msg.BudgetId)
+	if err != nil {
+		return nil, toConnectError(apperr.Invalid("invalid budget id"))
+	}
+	if svcErr := h.transactions.DeletePaymentMethod(ctx, id, replacementID, budgetID, userID); svcErr != nil {
+		return nil, toConnectError(svcErr)
+	}
+	return connect.NewResponse(&v1.DeletePaymentMethodResponse{}), nil
 }
 
 // ── Helper conversions ────────────────────────────────────────────────────────

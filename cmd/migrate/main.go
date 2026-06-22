@@ -3,14 +3,27 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/pressly/goose/v3"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func main() {
+	cmd := "up"
+	env := "dev"
+	if len(os.Args) > 1 {
+		cmd = os.Args[1]
+	}
+	if len(os.Args) > 2 {
+		env = os.Args[2]
+	}
+
+	_ = godotenv.Load(fmt.Sprintf(".env.%s", env))
+
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		log.Fatal("DATABASE_URL is required")
@@ -31,10 +44,6 @@ func main() {
 	}
 
 	dir := "internal/db/migrations"
-	cmd := "up"
-	if len(os.Args) > 1 {
-		cmd = os.Args[1]
-	}
 
 	switch cmd {
 	case "up":

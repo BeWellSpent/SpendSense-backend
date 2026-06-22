@@ -79,7 +79,7 @@ func (s *TransactionService) UpdateCategory(ctx context.Context, arg db.UpdateCa
 	return s.transactions.UpdateCategory(ctx, arg)
 }
 
-func (s *TransactionService) DeleteCategory(ctx context.Context, id, replacementID int32, userID uuid.UUID) error {
+func (s *TransactionService) DeleteCategory(ctx context.Context, id, replacementID int32, budgetID, userID uuid.UUID) error {
 	cat, err := s.transactions.GetCategory(ctx, id)
 	if err != nil {
 		return err
@@ -101,6 +101,7 @@ func (s *TransactionService) DeleteCategory(ctx context.Context, id, replacement
 		ID:            id,
 		UserID:        userID,
 		ReplacementID: &replacementID,
+		BudgetID:      budgetID,
 	})
 }
 
@@ -114,4 +115,27 @@ func (s *TransactionService) CreatePaymentMethod(ctx context.Context, arg db.Cre
 
 func (s *TransactionService) UpdatePaymentMethod(ctx context.Context, arg db.UpdatePaymentMethodParams) (db.PaymentMethod, error) {
 	return s.transactions.UpdatePaymentMethod(ctx, arg)
+}
+
+func (s *TransactionService) DeletePaymentMethod(ctx context.Context, id, replacementID, budgetID, userID uuid.UUID) error {
+	method, err := s.transactions.GetPaymentMethod(ctx, id)
+	if err != nil {
+		return err
+	}
+	if method.UserID == nil || *method.UserID != userID {
+		return apperr.Forbidden("access denied")
+	}
+	replacement, err := s.transactions.GetPaymentMethod(ctx, replacementID)
+	if err != nil {
+		return err
+	}
+	if replacement.UserID == nil || *replacement.UserID != userID {
+		return apperr.Forbidden("replacement payment method is not accessible")
+	}
+	return s.transactions.DeletePaymentMethodAndReassign(ctx, db.DeletePaymentMethodAndReassignParams{
+		ID:            id,
+		UserID:        userID,
+		ReplacementID: replacementID,
+		BudgetID:      budgetID,
+	})
 }

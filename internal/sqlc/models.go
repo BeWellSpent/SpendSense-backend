@@ -31,6 +31,7 @@ type Category struct {
 	TypeID   *int32     `json:"type_id"`
 	UserID   *uuid.UUID `json:"user_id"`
 	IsSystem bool       `json:"is_system"`
+	IsActive bool       `json:"is_active"`
 }
 
 type CategoryType struct {
@@ -60,6 +61,7 @@ type PaymentMethod struct {
 	Name          string     `json:"name"`
 	PaymentTypeID *int32     `json:"payment_type_id"`
 	UserID        *uuid.UUID `json:"user_id"`
+	IsActive      bool       `json:"is_active"`
 }
 
 type PaymentType struct {
