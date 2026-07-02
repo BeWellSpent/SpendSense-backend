@@ -410,6 +410,38 @@ func (q *Queries) GetLatestBudgetPeriod(ctx context.Context, budgetProfileID uui
 	return i, err
 }
 
+const getSavingsSource = `-- name: GetSavingsSource :one
+SELECT id, budget_profile_id, budget_person_id, name, amount, frequency, created_at, is_tax_reserve, federal_amount, state_amount, payment_method_id, payment_days
+FROM savings_source
+WHERE id = $1 AND budget_profile_id = $2
+LIMIT 1
+`
+
+type GetSavingsSourceParams struct {
+	ID              int32     `json:"id"`
+	BudgetProfileID uuid.UUID `json:"budget_profile_id"`
+}
+
+func (q *Queries) GetSavingsSource(ctx context.Context, arg GetSavingsSourceParams) (SavingsSource, error) {
+	row := q.db.QueryRow(ctx, getSavingsSource, arg.ID, arg.BudgetProfileID)
+	var i SavingsSource
+	err := row.Scan(
+		&i.ID,
+		&i.BudgetProfileID,
+		&i.BudgetPersonID,
+		&i.Name,
+		&i.Amount,
+		&i.Frequency,
+		&i.CreatedAt,
+		&i.IsTaxReserve,
+		&i.FederalAmount,
+		&i.StateAmount,
+		&i.PaymentMethodID,
+		&i.PaymentDays,
+	)
+	return i, err
+}
+
 const listBudgetPeopleByProfile = `-- name: ListBudgetPeopleByProfile :many
 SELECT id, budget_profile_id, user_name, user_id, is_active, color
 FROM budget_to_profile_mapping

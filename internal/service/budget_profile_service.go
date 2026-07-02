@@ -721,6 +721,32 @@ func (s *BudgetProfileService) DeleteSavingsSource(ctx context.Context, id int32
 	if _, err := s.assertOwner(ctx, profileID, userID); err != nil {
 		return err
 	}
+	src, err := s.profiles.GetSavingsSource(ctx, db.GetSavingsSourceParams{ID: id, BudgetProfileID: profileID})
+	if err != nil {
+		return err
+	}
+	if src.PaymentMethodID != nil {
+		cats, err := s.transactions.ListCategories(ctx, userID)
+		if err != nil {
+			return err
+		}
+		var savingsCatID *int32
+		for _, c := range cats {
+			if c.IsSystem && c.Name == "Savings" {
+				id32 := c.ID
+				savingsCatID = &id32
+				break
+			}
+		}
+		if savingsCatID != nil {
+			_ = s.transactions.DeleteSavingsSourceTransactions(ctx, db.DeleteSavingsSourceTransactionsParams{
+				BudgetProfileID: profileID,
+				Name:            &src.Name,
+				PaymentMethodID: *src.PaymentMethodID,
+				CategoryID:      savingsCatID,
+			})
+		}
+	}
 	return s.profiles.DeleteSavingsSource(ctx, db.DeleteSavingsSourceParams{
 		ID:              id,
 		BudgetProfileID: profileID,

@@ -180,6 +180,12 @@ SET name = $3, amount = $4, frequency = $5, budget_person_id = $6, payment_metho
 WHERE id = $1 AND budget_profile_id = $2
 RETURNING id, budget_profile_id, budget_person_id, name, amount, frequency, created_at, is_tax_reserve, federal_amount, state_amount, payment_method_id, payment_days;
 
+-- name: GetSavingsSource :one
+SELECT id, budget_profile_id, budget_person_id, name, amount, frequency, created_at, is_tax_reserve, federal_amount, state_amount, payment_method_id, payment_days
+FROM savings_source
+WHERE id = $1 AND budget_profile_id = $2
+LIMIT 1;
+
 -- name: DeleteSavingsSource :exec
 DELETE FROM savings_source WHERE id = $1 AND budget_profile_id = $2;
 
