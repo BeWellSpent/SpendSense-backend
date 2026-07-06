@@ -184,6 +184,15 @@ func (s *BudgetProfileService) createNextPeriod(ctx context.Context, profile db.
 	// Recalculate per-person tax reserve entries.
 	s.recalculateTaxReserve(ctx, profile.ID)
 
+	// Recreate savings transactions for the new period.
+	savingsSrcs, _ := s.profiles.ListSavingsSources(ctx, profile.ID)
+	for _, src := range savingsSrcs {
+		if src.PaymentMethodID == nil || len(src.PaymentDays) == 0 {
+			continue
+		}
+		s.createSavingsTransactions(ctx, profile.ID, profile.UserID, src)
+	}
+
 	// Carry forward fixed+recurring transactions from the previous period.
 	if latest.ID != uuid.Nil {
 		prevTxs, _ := s.transactions.ListFixedRecurring(ctx, latest.ID)
