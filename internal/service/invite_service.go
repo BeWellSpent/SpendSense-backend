@@ -87,7 +87,7 @@ func (s *InviteService) Send(ctx context.Context, profileID, callerID uuid.UUID,
 
 func (s *InviteService) sendEmail(budgetName string, token uuid.UUID, to string) error {
 	client := resend.NewClient(s.cfg.ResendAPIKey)
-	link := fmt.Sprintf("%s/invite/%s", strings.TrimRight(s.cfg.FrontendURL, "/"), token.String())
+	link := fmt.Sprintf("%s/en/invite/%s", strings.TrimRight(s.cfg.FrontendURL, "/"), token.String())
 	body := fmt.Sprintf(
 		`<p>You've been invited to collaborate on the <strong>%s</strong> budget in WellSpent.</p>`+
 			`<p><a href="%s">Accept invitation</a></p>`+
