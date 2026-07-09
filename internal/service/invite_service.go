@@ -13,6 +13,7 @@ import (
 	"github.com/mauro-afa91/spendsense/internal/repository"
 	db "github.com/mauro-afa91/spendsense/internal/sqlc"
 	resend "github.com/resend/resend-go/v2"
+	"go.uber.org/zap"
 )
 
 const inviteTTL = 7 * 24 * time.Hour
@@ -22,6 +23,7 @@ type InviteService struct {
 	profiles repository.BudgetProfileRepository
 	users    repository.UserRepository
 	cfg      *config.Config
+	log      *zap.Logger
 }
 
 func NewInviteService(
@@ -29,8 +31,9 @@ func NewInviteService(
 	profiles repository.BudgetProfileRepository,
 	users repository.UserRepository,
 	cfg *config.Config,
+	log *zap.Logger,
 ) *InviteService {
-	return &InviteService{invites: invites, profiles: profiles, users: users, cfg: cfg}
+	return &InviteService{invites: invites, profiles: profiles, users: users, cfg: cfg, log: log}
 }
 
 // Send creates an invite record and emails the recipient. Admin only.
@@ -71,8 +74,12 @@ func (s *InviteService) Send(ctx context.Context, profileID, callerID uuid.UUID,
 	}
 
 	// Fire email — non-fatal if email fails (invite is already persisted).
-	if s.cfg.ResendAPIKey != "" {
-		_ = s.sendEmail(profile.Name, inv.Token, email)
+	if s.cfg.ResendAPIKey == "" {
+		s.log.Warn("invite.email.skipped: RESEND_API_KEY not set", zap.String("to", email))
+	} else if err := s.sendEmail(profile.Name, inv.Token, email); err != nil {
+		s.log.Error("invite.email.failed", zap.String("to", email), zap.Error(err))
+	} else {
+		s.log.Info("invite.email.sent", zap.String("to", email))
 	}
 
 	return inv, nil
@@ -82,7 +89,7 @@ func (s *InviteService) sendEmail(budgetName string, token uuid.UUID, to string)
 	client := resend.NewClient(s.cfg.ResendAPIKey)
 	link := fmt.Sprintf("%s/invite/%s", strings.TrimRight(s.cfg.FrontendURL, "/"), token.String())
 	body := fmt.Sprintf(
-		`<p>You've been invited to collaborate on the <strong>%s</strong> budget in SpendSense.</p>`+
+		`<p>You've been invited to collaborate on the <strong>%s</strong> budget in WellSpent.</p>`+
 			`<p><a href="%s">Accept invitation</a></p>`+
 			`<p>This link expires in 7 days.</p>`,
 		budgetName, link,
