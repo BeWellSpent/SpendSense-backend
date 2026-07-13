@@ -694,11 +694,11 @@ func (h *BudgetHandler) ListTransactionReviews(ctx context.Context, req *connect
 	if err != nil {
 		return nil, err
 	}
-	periodID, err := uuid.Parse(req.Msg.BudgetPeriodId)
+	profileID, err := uuid.Parse(req.Msg.BudgetProfileId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	rows, svcErr := h.transactions.ListTransactionReviews(ctx, userID, periodID)
+	rows, svcErr := h.transactions.ListTransactionReviews(ctx, userID, profileID)
 	if svcErr != nil {
 		return nil, toConnectError(svcErr)
 	}
