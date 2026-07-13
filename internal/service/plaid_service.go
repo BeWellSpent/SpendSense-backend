@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/mauro-afa91/spendsense/internal/apperr"
@@ -17,6 +18,7 @@ type PlaidService struct {
 	items         repository.PlaidRepository
 	budgets       repository.BudgetProfileRepository
 	users         repository.UserRepository
+	transactions  repository.TransactionRepository
 	encryptionKey string
 }
 
@@ -25,9 +27,17 @@ func NewPlaidService(
 	items repository.PlaidRepository,
 	budgets repository.BudgetProfileRepository,
 	users repository.UserRepository,
+	transactions repository.TransactionRepository,
 	encryptionKey string,
 ) *PlaidService {
-	return &PlaidService{plaid: plaid, items: items, budgets: budgets, users: users, encryptionKey: encryptionKey}
+	return &PlaidService{
+		plaid:         plaid,
+		items:         items,
+		budgets:       budgets,
+		users:         users,
+		transactions:  transactions,
+		encryptionKey: encryptionKey,
+	}
 }
 
 // requireUS returns Forbidden if the user is not a US resident.
@@ -102,22 +112,69 @@ func (s *PlaidService) ExchangePublicToken(ctx context.Context, userID, profileI
 		return db.PlaidItem{}, fmt.Errorf("plaid: encrypt access token: %w", err)
 	}
 
-	// Fetch institution name; non-fatal if unavailable.
-	var institutionName, institutionID *string
-	// Plaid doesn't return institution_id directly from token exchange — it's on the Item.
-	// For simplicity we leave both nil; a future enhancement can call GetItem then GetInstitution.
+	// Fetch linked accounts and institution info.
+	accounts, institutionID, err := s.plaid.GetAccounts(ctx, accessToken)
+	if err != nil {
+		// Non-fatal: store the item anyway; payment methods can be created later.
+		accounts = nil
+		institutionID = ""
+	}
+
+	// Resolve institution display name.
+	var instIDPtr, instNamePtr *string
+	if institutionID != "" {
+		instIDPtr = &institutionID
+		if name, nameErr := s.plaid.GetInstitutionName(ctx, institutionID); nameErr == nil && name != "" {
+			instNamePtr = &name
+		}
+	}
 
 	item, err := s.items.Create(ctx, db.CreatePlaidItemParams{
 		UserID:          userID,
 		BudgetProfileID: profileID,
 		AccessToken:     encryptedToken,
 		ItemID:          itemID,
-		InstitutionID:   institutionID,
-		InstitutionName: institutionName,
+		InstitutionID:   instIDPtr,
+		InstitutionName: instNamePtr,
 	})
 	if err != nil {
 		return db.PlaidItem{}, fmt.Errorf("plaid: store item: %w", err)
 	}
+
+	// Create one payment method per linked account, attributed to this user's
+	// budget person row. Non-fatal: item is already stored above.
+	pmCreated := 0
+	if len(accounts) > 0 {
+		person, personErr := s.budgets.GetPersonByUserID(ctx, profileID, userID)
+		if personErr == nil {
+			personID := int32(person.ID)
+			for _, acct := range accounts {
+				// Skip if a payment method for this account already exists
+				// (handles reconnects without creating duplicates).
+				if _, existsErr := s.transactions.GetPaymentMethodByPlaidAccountID(ctx, acct.PlaidAccountID); existsErr == nil {
+					continue
+				}
+				name := plaidclient.PlaidAccountName(acct.Name, acct.Mask)
+				typeID := plaidclient.PlaidPaymentTypeID(acct.Type, acct.Subtype)
+				plaidAcctID := acct.PlaidAccountID
+				if _, pmErr := s.transactions.CreatePaymentMethodFromPlaid(ctx, db.CreatePaymentMethodFromPlaidParams{
+					Name:           name,
+					PaymentTypeID:  &typeID,
+					UserID:         &userID,
+					BudgetPersonID: &personID,
+					PlaidAccountID: &plaidAcctID,
+				}); pmErr == nil {
+					pmCreated++
+				}
+			}
+		}
+	}
+	if pmCreated > 0 {
+		log.Printf("plaid: %d payment method(s) created for user %s", pmCreated, userID)
+	} else {
+		log.Printf("plaid: no payment methods created for user %s", userID)
+	}
+
 	return item, nil
 }
 

@@ -142,6 +142,7 @@ type PaymentMethod struct {
 	IsActive       bool       `json:"is_active"`
 	BudgetPersonID *int32     `json:"budget_person_id"`
 	Color          string     `json:"color"`
+	PlaidAccountID *string    `json:"plaid_account_id"`
 }
 
 type PaymentType struct {
