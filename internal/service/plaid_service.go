@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/mauro-afa91/spendsense/internal/apperr"
@@ -142,6 +143,7 @@ func (s *PlaidService) ExchangePublicToken(ctx context.Context, userID, profileI
 
 	// Create one payment method per linked account, attributed to this user's
 	// budget person row. Non-fatal: item is already stored above.
+	pmCreated := 0
 	if len(accounts) > 0 {
 		person, personErr := s.budgets.GetPersonByUserID(ctx, profileID, userID)
 		if personErr == nil {
@@ -155,15 +157,22 @@ func (s *PlaidService) ExchangePublicToken(ctx context.Context, userID, profileI
 				name := plaidclient.PlaidAccountName(acct.Name, acct.Mask)
 				typeID := plaidclient.PlaidPaymentTypeID(acct.Type, acct.Subtype)
 				plaidAcctID := acct.PlaidAccountID
-				_, _ = s.transactions.CreatePaymentMethodFromPlaid(ctx, db.CreatePaymentMethodFromPlaidParams{
+				if _, pmErr := s.transactions.CreatePaymentMethodFromPlaid(ctx, db.CreatePaymentMethodFromPlaidParams{
 					Name:           name,
 					PaymentTypeID:  &typeID,
 					UserID:         &userID,
 					BudgetPersonID: &personID,
 					PlaidAccountID: &plaidAcctID,
-				})
+				}); pmErr == nil {
+					pmCreated++
+				}
 			}
 		}
+	}
+	if pmCreated > 0 {
+		log.Printf("plaid: %d payment method(s) created for user %s", pmCreated, userID)
+	} else {
+		log.Printf("plaid: no payment methods created for user %s", userID)
 	}
 
 	return item, nil
