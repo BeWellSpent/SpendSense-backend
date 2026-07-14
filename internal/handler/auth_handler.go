@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	v1 "github.com/mauro-afa91/spendsense/gen/spendsense/v1"
-	"github.com/mauro-afa91/spendsense/internal/service"
+	v1 "github.com/BeWellSpent/wellspent-backend/gen/wellspent/v1"
+	"github.com/BeWellSpent/wellspent-backend/internal/service"
 )
 
 type AuthHandler struct {

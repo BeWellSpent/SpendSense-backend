@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"connectrpc.com/connect"
-	"github.com/mauro-afa91/spendsense/internal/apperr"
+	"github.com/BeWellSpent/wellspent-backend/internal/apperr"
 )
 
 func toConnectError(err error) error {

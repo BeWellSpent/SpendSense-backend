@@ -19,7 +19,7 @@ type Config struct {
 	Env                string   `envconfig:"ENV" default:"dev"`
 	ServerPort         string   `envconfig:"PORT" default:"8080"`
 	ResendAPIKey       string   `envconfig:"RESEND_API_KEY"`
-	ResendFromEmail    string   `envconfig:"RESEND_FROM_EMAIL" default:"WellSpent <noreply@spendsense.app>"`
+	ResendFromEmail    string   `envconfig:"RESEND_FROM_EMAIL" default:"WellSpent <noreply@wellspent.app>"`
 	FrontendURL        string   `envconfig:"FRONTEND_URL" default:"http://localhost:3000"`
 	PlaidClientID      string   `envconfig:"PLAID_CLIENT_ID"`
 	PlaidSecret        string   `envconfig:"PLAID_SECRET"`

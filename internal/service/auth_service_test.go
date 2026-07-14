@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/mauro-afa91/spendsense/internal/apperr"
-	"github.com/mauro-afa91/spendsense/internal/auth"
-	db "github.com/mauro-afa91/spendsense/internal/sqlc"
+	"github.com/BeWellSpent/wellspent-backend/internal/apperr"
+	"github.com/BeWellSpent/wellspent-backend/internal/auth"
+	db "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"

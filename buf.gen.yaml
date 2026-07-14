@@ -1,6 +1,6 @@
 version: v2
 inputs:
-  - module: buf.build/xpendsense/spendsense
+  - module: buf.build/bewellspent/wellspent
 plugins:
   - remote: buf.build/protocolbuffers/go:v1.35.1
     out: gen

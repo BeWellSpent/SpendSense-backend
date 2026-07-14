@@ -11,16 +11,16 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
-	"github.com/mauro-afa91/spendsense/gen/spendsense/v1/spendsensev1connect"
-	"github.com/mauro-afa91/spendsense/internal/auth"
-	"github.com/mauro-afa91/spendsense/internal/config"
-	"github.com/mauro-afa91/spendsense/internal/db"
-	"github.com/mauro-afa91/spendsense/internal/handler"
-	"github.com/mauro-afa91/spendsense/internal/middleware"
-	plaidclient "github.com/mauro-afa91/spendsense/internal/plaid"
-	"github.com/mauro-afa91/spendsense/internal/repository"
-	"github.com/mauro-afa91/spendsense/internal/service"
-	sqlcdb "github.com/mauro-afa91/spendsense/internal/sqlc"
+	"github.com/BeWellSpent/wellspent-backend/gen/wellspent/v1/wellspentv1connect"
+	"github.com/BeWellSpent/wellspent-backend/internal/auth"
+	"github.com/BeWellSpent/wellspent-backend/internal/config"
+	"github.com/BeWellSpent/wellspent-backend/internal/db"
+	"github.com/BeWellSpent/wellspent-backend/internal/handler"
+	"github.com/BeWellSpent/wellspent-backend/internal/middleware"
+	plaidclient "github.com/BeWellSpent/wellspent-backend/internal/plaid"
+	"github.com/BeWellSpent/wellspent-backend/internal/repository"
+	"github.com/BeWellSpent/wellspent-backend/internal/service"
+	sqlcdb "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
 	"go.uber.org/zap"
 )
 
@@ -80,12 +80,12 @@ func main() {
 
 	// Procedures that don't require authentication
 	bypass := map[string]bool{
-		spendsensev1connect.AuthServiceRegisterProcedure:           true,
-		spendsensev1connect.AuthServiceLoginProcedure:              true,
-		spendsensev1connect.AuthServiceGetGoogleAuthURLProcedure:   true,
-		spendsensev1connect.AuthServiceExchangeGoogleCodeProcedure: true,
-		spendsensev1connect.UserServiceListCountriesProcedure:      true,
-		spendsensev1connect.InviteServiceGetBudgetInviteProcedure:  true,
+		wellspentv1connect.AuthServiceRegisterProcedure:           true,
+		wellspentv1connect.AuthServiceLoginProcedure:              true,
+		wellspentv1connect.AuthServiceGetGoogleAuthURLProcedure:   true,
+		wellspentv1connect.AuthServiceExchangeGoogleCodeProcedure: true,
+		wellspentv1connect.UserServiceListCountriesProcedure:      true,
+		wellspentv1connect.InviteServiceGetBudgetInviteProcedure:  true,
 	}
 
 	interceptors := connect.WithInterceptors(
@@ -94,12 +94,12 @@ func main() {
 	)
 
 	mux := http.NewServeMux()
-	mux.Handle(spendsensev1connect.NewAuthServiceHandler(handler.NewAuthHandler(authSvc), interceptors))
-	mux.Handle(spendsensev1connect.NewUserServiceHandler(handler.NewUserHandler(userSvc), interceptors))
-	mux.Handle(spendsensev1connect.NewBudgetServiceHandler(handler.NewBudgetHandler(profileSvc, transactionSvc, allocationSvc), interceptors))
-	mux.Handle(spendsensev1connect.NewInviteServiceHandler(handler.NewInviteHandler(inviteSvc), interceptors))
+	mux.Handle(wellspentv1connect.NewAuthServiceHandler(handler.NewAuthHandler(authSvc), interceptors))
+	mux.Handle(wellspentv1connect.NewUserServiceHandler(handler.NewUserHandler(userSvc), interceptors))
+	mux.Handle(wellspentv1connect.NewBudgetServiceHandler(handler.NewBudgetHandler(profileSvc, transactionSvc, allocationSvc), interceptors))
+	mux.Handle(wellspentv1connect.NewInviteServiceHandler(handler.NewInviteHandler(inviteSvc), interceptors))
 	if plaidSvc != nil {
-		mux.Handle(spendsensev1connect.NewPlaidServiceHandler(handler.NewPlaidHandler(plaidSvc), interceptors))
+		mux.Handle(wellspentv1connect.NewPlaidServiceHandler(handler.NewPlaidHandler(plaidSvc), interceptors))
 	}
 
 	corsHandler := cors.New(cors.Options{

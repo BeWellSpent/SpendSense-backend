@@ -11,10 +11,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mauro-afa91/spendsense/internal/apperr"
-	"github.com/mauro-afa91/spendsense/internal/repository"
-	db "github.com/mauro-afa91/spendsense/internal/sqlc"
-	"github.com/mauro-afa91/spendsense/internal/tax"
+	"github.com/BeWellSpent/wellspent-backend/internal/apperr"
+	"github.com/BeWellSpent/wellspent-backend/internal/repository"
+	db "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
+	"github.com/BeWellSpent/wellspent-backend/internal/tax"
 )
 
 type BudgetProfileService struct {

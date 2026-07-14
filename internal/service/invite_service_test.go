@@ -8,9 +8,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mauro-afa91/spendsense/internal/apperr"
-	"github.com/mauro-afa91/spendsense/internal/config"
-	db "github.com/mauro-afa91/spendsense/internal/sqlc"
+	"github.com/BeWellSpent/wellspent-backend/internal/apperr"
+	"github.com/BeWellSpent/wellspent-backend/internal/config"
+	db "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
