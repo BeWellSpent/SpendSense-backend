@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	db "github.com/mauro-afa91/spendsense/internal/sqlc"
+	db "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
 )
 
 type ExpenseAllocationRepository interface {

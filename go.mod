@@ -1,4 +1,4 @@
-module github.com/mauro-afa91/spendsense
+module github.com/BeWellSpent/wellspent-backend
 
 go 1.25.7
 

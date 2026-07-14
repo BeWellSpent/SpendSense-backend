@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	v1 "github.com/mauro-afa91/spendsense/gen/spendsense/v1"
+	v1 "github.com/BeWellSpent/wellspent-backend/gen/wellspent/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

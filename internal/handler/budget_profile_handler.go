@@ -5,9 +5,9 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
-	v1 "github.com/mauro-afa91/spendsense/gen/spendsense/v1"
-	"github.com/mauro-afa91/spendsense/internal/service"
-	db "github.com/mauro-afa91/spendsense/internal/sqlc"
+	v1 "github.com/BeWellSpent/wellspent-backend/gen/wellspent/v1"
+	"github.com/BeWellSpent/wellspent-backend/internal/service"
+	db "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
 )
 
 // ── Profile CRUD ──────────────────────────────────────────────────────────────

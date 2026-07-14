@@ -5,11 +5,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/mauro-afa91/spendsense/internal/db"
-	plaidclient "github.com/mauro-afa91/spendsense/internal/plaid"
-	"github.com/mauro-afa91/spendsense/internal/repository"
-	"github.com/mauro-afa91/spendsense/internal/service"
-	sqlcdb "github.com/mauro-afa91/spendsense/internal/sqlc"
+	"github.com/BeWellSpent/wellspent-backend/internal/db"
+	plaidclient "github.com/BeWellSpent/wellspent-backend/internal/plaid"
+	"github.com/BeWellSpent/wellspent-backend/internal/repository"
+	"github.com/BeWellSpent/wellspent-backend/internal/service"
+	sqlcdb "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
 )
 
 // plaid-sync fetches incremental transaction changes from Plaid for every active

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	"github.com/mauro-afa91/spendsense/internal/auth"
+	"github.com/BeWellSpent/wellspent-backend/internal/auth"
 )
 
 type contextKey string

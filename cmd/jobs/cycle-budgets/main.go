@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mauro-afa91/spendsense/internal/db"
-	"github.com/mauro-afa91/spendsense/internal/repository"
-	"github.com/mauro-afa91/spendsense/internal/service"
-	sqlcdb "github.com/mauro-afa91/spendsense/internal/sqlc"
+	"github.com/BeWellSpent/wellspent-backend/internal/db"
+	"github.com/BeWellSpent/wellspent-backend/internal/repository"
+	"github.com/BeWellSpent/wellspent-backend/internal/service"
+	sqlcdb "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
 )
 
 // cycle-budgets is a daily job that finds every BudgetProfile whose latest period

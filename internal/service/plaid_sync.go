@@ -9,9 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mauro-afa91/spendsense/internal/crypto"
-	plaidclient "github.com/mauro-afa91/spendsense/internal/plaid"
-	db "github.com/mauro-afa91/spendsense/internal/sqlc"
+	"github.com/BeWellSpent/wellspent-backend/internal/crypto"
+	plaidclient "github.com/BeWellSpent/wellspent-backend/internal/plaid"
+	db "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
 )
 
 // SyncItem performs an incremental Plaid transactions sync for a single connected

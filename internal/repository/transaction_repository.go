@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/mauro-afa91/spendsense/internal/apperr"
-	db "github.com/mauro-afa91/spendsense/internal/sqlc"
+	"github.com/BeWellSpent/wellspent-backend/internal/apperr"
+	db "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
 )
 
 type TransactionRepository interface {

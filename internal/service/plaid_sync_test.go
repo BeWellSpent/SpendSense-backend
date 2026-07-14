@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	plaidclient "github.com/mauro-afa91/spendsense/internal/plaid"
-	db "github.com/mauro-afa91/spendsense/internal/sqlc"
+	plaidclient "github.com/BeWellSpent/wellspent-backend/internal/plaid"
+	db "github.com/BeWellSpent/wellspent-backend/internal/sqlc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
