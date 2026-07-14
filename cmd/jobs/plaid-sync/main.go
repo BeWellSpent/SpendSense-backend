@@ -219,7 +219,12 @@ func main() {
 				autoConfirmed++
 				log.Printf("item %s: auto-confirmed %q (alias+amount → %q)", item.ID, tx.Name, bestFE.Name)
 			case bestScore >= 80 && hasUnpaidTarget:
-				if _, rErr := reviewRepo.Create(ctx, periodID, inserted.ID, bestFE.ID, bestScore); rErr == nil {
+				// Review rows match against the specific unpaid transaction,
+				// not the template — consistent with the manual flag-for-review
+				// path, and works the same whether unpaid.ID came from a
+				// FixedExpense template or (in principle) any other Fixed-type
+				// transaction.
+				if _, rErr := reviewRepo.Create(ctx, periodID, inserted.ID, unpaid.ID, bestScore); rErr == nil {
 					queued++
 					log.Printf("item %s: queued review for %q (score=%.0f, fixed=%q)", item.ID, tx.Name, bestScore, bestFE.Name)
 				}

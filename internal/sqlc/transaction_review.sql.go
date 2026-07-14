@@ -29,32 +29,42 @@ func (q *Queries) CreateFixedExpenseAlias(ctx context.Context, arg CreateFixedEx
 }
 
 const createTransactionReview = `-- name: CreateTransactionReview :one
-INSERT INTO transaction_review (budget_period_id, transaction_id, fixed_expense_id, match_score)
+INSERT INTO transaction_review (budget_period_id, transaction_id, matched_transaction_id, match_score)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (transaction_id) DO NOTHING
-RETURNING id, budget_period_id, transaction_id, fixed_expense_id, match_score, status, created_at
+RETURNING id, budget_period_id, transaction_id, matched_transaction_id, match_score, status, created_at
 `
 
 type CreateTransactionReviewParams struct {
-	BudgetPeriodID uuid.UUID      `json:"budget_period_id"`
-	TransactionID  uuid.UUID      `json:"transaction_id"`
-	FixedExpenseID uuid.UUID      `json:"fixed_expense_id"`
-	MatchScore     pgtype.Numeric `json:"match_score"`
+	BudgetPeriodID       uuid.UUID      `json:"budget_period_id"`
+	TransactionID        uuid.UUID      `json:"transaction_id"`
+	MatchedTransactionID uuid.UUID      `json:"matched_transaction_id"`
+	MatchScore           pgtype.Numeric `json:"match_score"`
 }
 
-func (q *Queries) CreateTransactionReview(ctx context.Context, arg CreateTransactionReviewParams) (TransactionReview, error) {
+type CreateTransactionReviewRow struct {
+	ID                   uuid.UUID          `json:"id"`
+	BudgetPeriodID       uuid.UUID          `json:"budget_period_id"`
+	TransactionID        uuid.UUID          `json:"transaction_id"`
+	MatchedTransactionID uuid.UUID          `json:"matched_transaction_id"`
+	MatchScore           pgtype.Numeric     `json:"match_score"`
+	Status               string             `json:"status"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) CreateTransactionReview(ctx context.Context, arg CreateTransactionReviewParams) (CreateTransactionReviewRow, error) {
 	row := q.db.QueryRow(ctx, createTransactionReview,
 		arg.BudgetPeriodID,
 		arg.TransactionID,
-		arg.FixedExpenseID,
+		arg.MatchedTransactionID,
 		arg.MatchScore,
 	)
-	var i TransactionReview
+	var i CreateTransactionReviewRow
 	err := row.Scan(
 		&i.ID,
 		&i.BudgetPeriodID,
 		&i.TransactionID,
-		&i.FixedExpenseID,
+		&i.MatchedTransactionID,
 		&i.MatchScore,
 		&i.Status,
 		&i.CreatedAt,
@@ -77,28 +87,32 @@ func (q *Queries) DeleteFixedExpenseAlias(ctx context.Context, arg DeleteFixedEx
 	return err
 }
 
-const getConfirmedReviewByFixedExpense = `-- name: GetConfirmedReviewByFixedExpense :one
-SELECT id, budget_period_id, transaction_id, fixed_expense_id, match_score, status, created_at
+const getConfirmedReviewByMatchedTransaction = `-- name: GetConfirmedReviewByMatchedTransaction :one
+SELECT id, budget_period_id, transaction_id, matched_transaction_id, match_score, status, created_at
 FROM transaction_review
-WHERE fixed_expense_id = $1
-  AND budget_period_id = $2
+WHERE matched_transaction_id = $1
   AND status = 'confirmed'
 LIMIT 1
 `
 
-type GetConfirmedReviewByFixedExpenseParams struct {
-	FixedExpenseID uuid.UUID `json:"fixed_expense_id"`
-	BudgetPeriodID uuid.UUID `json:"budget_period_id"`
+type GetConfirmedReviewByMatchedTransactionRow struct {
+	ID                   uuid.UUID          `json:"id"`
+	BudgetPeriodID       uuid.UUID          `json:"budget_period_id"`
+	TransactionID        uuid.UUID          `json:"transaction_id"`
+	MatchedTransactionID uuid.UUID          `json:"matched_transaction_id"`
+	MatchScore           pgtype.Numeric     `json:"match_score"`
+	Status               string             `json:"status"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 }
 
-func (q *Queries) GetConfirmedReviewByFixedExpense(ctx context.Context, arg GetConfirmedReviewByFixedExpenseParams) (TransactionReview, error) {
-	row := q.db.QueryRow(ctx, getConfirmedReviewByFixedExpense, arg.FixedExpenseID, arg.BudgetPeriodID)
-	var i TransactionReview
+func (q *Queries) GetConfirmedReviewByMatchedTransaction(ctx context.Context, matchedTransactionID uuid.UUID) (GetConfirmedReviewByMatchedTransactionRow, error) {
+	row := q.db.QueryRow(ctx, getConfirmedReviewByMatchedTransaction, matchedTransactionID)
+	var i GetConfirmedReviewByMatchedTransactionRow
 	err := row.Scan(
 		&i.ID,
 		&i.BudgetPeriodID,
 		&i.TransactionID,
-		&i.FixedExpenseID,
+		&i.MatchedTransactionID,
 		&i.MatchScore,
 		&i.Status,
 		&i.CreatedAt,
@@ -152,20 +166,30 @@ func (q *Queries) GetFixedExpenseByAlias(ctx context.Context, arg GetFixedExpens
 }
 
 const getTransactionReview = `-- name: GetTransactionReview :one
-SELECT id, budget_period_id, transaction_id, fixed_expense_id, match_score, status, created_at
+SELECT id, budget_period_id, transaction_id, matched_transaction_id, match_score, status, created_at
 FROM transaction_review
 WHERE id = $1
 LIMIT 1
 `
 
-func (q *Queries) GetTransactionReview(ctx context.Context, id uuid.UUID) (TransactionReview, error) {
+type GetTransactionReviewRow struct {
+	ID                   uuid.UUID          `json:"id"`
+	BudgetPeriodID       uuid.UUID          `json:"budget_period_id"`
+	TransactionID        uuid.UUID          `json:"transaction_id"`
+	MatchedTransactionID uuid.UUID          `json:"matched_transaction_id"`
+	MatchScore           pgtype.Numeric     `json:"match_score"`
+	Status               string             `json:"status"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetTransactionReview(ctx context.Context, id uuid.UUID) (GetTransactionReviewRow, error) {
 	row := q.db.QueryRow(ctx, getTransactionReview, id)
-	var i TransactionReview
+	var i GetTransactionReviewRow
 	err := row.Scan(
 		&i.ID,
 		&i.BudgetPeriodID,
 		&i.TransactionID,
-		&i.FixedExpenseID,
+		&i.MatchedTransactionID,
 		&i.MatchScore,
 		&i.Status,
 		&i.CreatedAt,
@@ -199,14 +223,14 @@ func (q *Queries) ListFixedExpenseAliases(ctx context.Context, fixedExpenseID uu
 
 const listPendingTransactionReviews = `-- name: ListPendingTransactionReviews :many
 SELECT
-    tr.id, tr.budget_period_id, tr.transaction_id, tr.fixed_expense_id,
+    tr.id, tr.budget_period_id, tr.transaction_id, tr.matched_transaction_id,
     tr.match_score, tr.status, tr.created_at,
     t.name  AS transaction_name,
     t.amount AS transaction_amount,
-    fe.name AS fixed_expense_name
+    mt.name AS matched_transaction_name
 FROM transaction_review tr
 JOIN transaction t  ON t.id  = tr.transaction_id
-JOIN fixed_expense fe ON fe.id = tr.fixed_expense_id
+JOIN transaction mt ON mt.id = tr.matched_transaction_id
 JOIN budget_period bp ON bp.id = tr.budget_period_id
 WHERE bp.budget_profile_id = $1
   AND bp.is_archived = FALSE
@@ -215,18 +239,22 @@ ORDER BY tr.match_score DESC
 `
 
 type ListPendingTransactionReviewsRow struct {
-	ID                uuid.UUID          `json:"id"`
-	BudgetPeriodID    uuid.UUID          `json:"budget_period_id"`
-	TransactionID     uuid.UUID          `json:"transaction_id"`
-	FixedExpenseID    uuid.UUID          `json:"fixed_expense_id"`
-	MatchScore        pgtype.Numeric     `json:"match_score"`
-	Status            string             `json:"status"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
-	TransactionName   *string            `json:"transaction_name"`
-	TransactionAmount pgtype.Numeric     `json:"transaction_amount"`
-	FixedExpenseName  string             `json:"fixed_expense_name"`
+	ID                     uuid.UUID          `json:"id"`
+	BudgetPeriodID         uuid.UUID          `json:"budget_period_id"`
+	TransactionID          uuid.UUID          `json:"transaction_id"`
+	MatchedTransactionID   uuid.UUID          `json:"matched_transaction_id"`
+	MatchScore             pgtype.Numeric     `json:"match_score"`
+	Status                 string             `json:"status"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	TransactionName        *string            `json:"transaction_name"`
+	TransactionAmount      pgtype.Numeric     `json:"transaction_amount"`
+	MatchedTransactionName *string            `json:"matched_transaction_name"`
 }
 
+// ListPendingTransactionReviews joins transaction twice: once for the
+// flagged/imported transaction (t), once for the matched Fixed-type
+// transaction (mt) — which may be spawned from a FixedExpense template or a
+// SavingsSource, no distinction needed since both are just transactions.
 func (q *Queries) ListPendingTransactionReviews(ctx context.Context, budgetProfileID uuid.UUID) ([]ListPendingTransactionReviewsRow, error) {
 	rows, err := q.db.Query(ctx, listPendingTransactionReviews, budgetProfileID)
 	if err != nil {
@@ -240,13 +268,13 @@ func (q *Queries) ListPendingTransactionReviews(ctx context.Context, budgetProfi
 			&i.ID,
 			&i.BudgetPeriodID,
 			&i.TransactionID,
-			&i.FixedExpenseID,
+			&i.MatchedTransactionID,
 			&i.MatchScore,
 			&i.Status,
 			&i.CreatedAt,
 			&i.TransactionName,
 			&i.TransactionAmount,
-			&i.FixedExpenseName,
+			&i.MatchedTransactionName,
 		); err != nil {
 			return nil, err
 		}
@@ -258,21 +286,15 @@ func (q *Queries) ListPendingTransactionReviews(ctx context.Context, budgetProfi
 	return items, nil
 }
 
-const resetConfirmedReviewByFixedExpense = `-- name: ResetConfirmedReviewByFixedExpense :exec
+const resetConfirmedReviewByMatchedTransaction = `-- name: ResetConfirmedReviewByMatchedTransaction :exec
 UPDATE transaction_review
 SET status = 'pending'
-WHERE fixed_expense_id = $1
-  AND budget_period_id = $2
+WHERE matched_transaction_id = $1
   AND status = 'confirmed'
 `
 
-type ResetConfirmedReviewByFixedExpenseParams struct {
-	FixedExpenseID uuid.UUID `json:"fixed_expense_id"`
-	BudgetPeriodID uuid.UUID `json:"budget_period_id"`
-}
-
-func (q *Queries) ResetConfirmedReviewByFixedExpense(ctx context.Context, arg ResetConfirmedReviewByFixedExpenseParams) error {
-	_, err := q.db.Exec(ctx, resetConfirmedReviewByFixedExpense, arg.FixedExpenseID, arg.BudgetPeriodID)
+func (q *Queries) ResetConfirmedReviewByMatchedTransaction(ctx context.Context, matchedTransactionID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, resetConfirmedReviewByMatchedTransaction, matchedTransactionID)
 	return err
 }
 
@@ -291,35 +313,45 @@ func (q *Queries) UpdateTransactionReviewStatus(ctx context.Context, arg UpdateT
 }
 
 const upsertTransactionReview = `-- name: UpsertTransactionReview :one
-INSERT INTO transaction_review (budget_period_id, transaction_id, fixed_expense_id, match_score, status)
+INSERT INTO transaction_review (budget_period_id, transaction_id, matched_transaction_id, match_score, status)
 VALUES ($1, $2, $3, $4, 'pending')
 ON CONFLICT (transaction_id) DO UPDATE SET
-    fixed_expense_id = EXCLUDED.fixed_expense_id,
-    match_score      = EXCLUDED.match_score,
-    status           = 'pending'
-RETURNING id, budget_period_id, transaction_id, fixed_expense_id, match_score, status, created_at
+    matched_transaction_id = EXCLUDED.matched_transaction_id,
+    match_score            = EXCLUDED.match_score,
+    status                 = 'pending'
+RETURNING id, budget_period_id, transaction_id, matched_transaction_id, match_score, status, created_at
 `
 
 type UpsertTransactionReviewParams struct {
-	BudgetPeriodID uuid.UUID      `json:"budget_period_id"`
-	TransactionID  uuid.UUID      `json:"transaction_id"`
-	FixedExpenseID uuid.UUID      `json:"fixed_expense_id"`
-	MatchScore     pgtype.Numeric `json:"match_score"`
+	BudgetPeriodID       uuid.UUID      `json:"budget_period_id"`
+	TransactionID        uuid.UUID      `json:"transaction_id"`
+	MatchedTransactionID uuid.UUID      `json:"matched_transaction_id"`
+	MatchScore           pgtype.Numeric `json:"match_score"`
 }
 
-func (q *Queries) UpsertTransactionReview(ctx context.Context, arg UpsertTransactionReviewParams) (TransactionReview, error) {
+type UpsertTransactionReviewRow struct {
+	ID                   uuid.UUID          `json:"id"`
+	BudgetPeriodID       uuid.UUID          `json:"budget_period_id"`
+	TransactionID        uuid.UUID          `json:"transaction_id"`
+	MatchedTransactionID uuid.UUID          `json:"matched_transaction_id"`
+	MatchScore           pgtype.Numeric     `json:"match_score"`
+	Status               string             `json:"status"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) UpsertTransactionReview(ctx context.Context, arg UpsertTransactionReviewParams) (UpsertTransactionReviewRow, error) {
 	row := q.db.QueryRow(ctx, upsertTransactionReview,
 		arg.BudgetPeriodID,
 		arg.TransactionID,
-		arg.FixedExpenseID,
+		arg.MatchedTransactionID,
 		arg.MatchScore,
 	)
-	var i TransactionReview
+	var i UpsertTransactionReviewRow
 	err := row.Scan(
 		&i.ID,
 		&i.BudgetPeriodID,
 		&i.TransactionID,
-		&i.FixedExpenseID,
+		&i.MatchedTransactionID,
 		&i.MatchScore,
 		&i.Status,
 		&i.CreatedAt,

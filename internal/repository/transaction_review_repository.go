@@ -12,13 +12,13 @@ import (
 )
 
 type TransactionReviewRepository interface {
-	Create(ctx context.Context, periodID, transactionID, fixedExpenseID uuid.UUID, score float64) (db.TransactionReview, error)
-	Upsert(ctx context.Context, periodID, transactionID, fixedExpenseID uuid.UUID, score float64) (db.TransactionReview, error)
+	Create(ctx context.Context, periodID, transactionID, matchedTransactionID uuid.UUID, score float64) (db.TransactionReview, error)
+	Upsert(ctx context.Context, periodID, transactionID, matchedTransactionID uuid.UUID, score float64) (db.TransactionReview, error)
 	ListPending(ctx context.Context, budgetProfileID uuid.UUID) ([]db.ListPendingTransactionReviewsRow, error)
 	GetByID(ctx context.Context, id uuid.UUID) (db.TransactionReview, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string) error
-	GetConfirmedByFixedExpenseAndPeriod(ctx context.Context, fixedExpenseID, periodID uuid.UUID) (db.TransactionReview, error)
-	ResetByFixedExpenseAndPeriod(ctx context.Context, fixedExpenseID, periodID uuid.UUID) error
+	GetConfirmedByMatchedTransaction(ctx context.Context, matchedTransactionID uuid.UUID) (db.TransactionReview, error)
+	ResetByMatchedTransaction(ctx context.Context, matchedTransactionID uuid.UUID) error
 	CreateAlias(ctx context.Context, fixedExpenseID uuid.UUID, alias string) error
 	DeleteAlias(ctx context.Context, fixedExpenseID uuid.UUID, alias string) error
 	ListAliases(ctx context.Context, fixedExpenseID uuid.UUID) ([]string, error)
@@ -33,30 +33,46 @@ func NewTransactionReviewRepository(q *db.Queries) TransactionReviewRepository {
 	return &transactionReviewRepository{q: q}
 }
 
-func (r *transactionReviewRepository) Create(ctx context.Context, periodID, transactionID, fixedExpenseID uuid.UUID, score float64) (db.TransactionReview, error) {
+func (r *transactionReviewRepository) Create(ctx context.Context, periodID, transactionID, matchedTransactionID uuid.UUID, score float64) (db.TransactionReview, error) {
 	var scoreNum pgtype.Numeric
 	if err := scoreNum.Scan(fmt.Sprintf("%.2f", score)); err != nil {
 		return db.TransactionReview{}, err
 	}
-	return r.q.CreateTransactionReview(ctx, db.CreateTransactionReviewParams{
-		BudgetPeriodID: periodID,
-		TransactionID:  transactionID,
-		FixedExpenseID: fixedExpenseID,
-		MatchScore:     scoreNum,
+	row, err := r.q.CreateTransactionReview(ctx, db.CreateTransactionReviewParams{
+		BudgetPeriodID:       periodID,
+		TransactionID:        transactionID,
+		MatchedTransactionID: matchedTransactionID,
+		MatchScore:           scoreNum,
 	})
+	if err != nil {
+		return db.TransactionReview{}, err
+	}
+	return db.TransactionReview{
+		ID: row.ID, BudgetPeriodID: row.BudgetPeriodID, TransactionID: row.TransactionID,
+		MatchedTransactionID: row.MatchedTransactionID, MatchScore: row.MatchScore,
+		Status: row.Status, CreatedAt: row.CreatedAt,
+	}, nil
 }
 
-func (r *transactionReviewRepository) Upsert(ctx context.Context, periodID, transactionID, fixedExpenseID uuid.UUID, score float64) (db.TransactionReview, error) {
+func (r *transactionReviewRepository) Upsert(ctx context.Context, periodID, transactionID, matchedTransactionID uuid.UUID, score float64) (db.TransactionReview, error) {
 	var scoreNum pgtype.Numeric
 	if err := scoreNum.Scan(fmt.Sprintf("%.2f", score)); err != nil {
 		return db.TransactionReview{}, err
 	}
-	return r.q.UpsertTransactionReview(ctx, db.UpsertTransactionReviewParams{
-		BudgetPeriodID: periodID,
-		TransactionID:  transactionID,
-		FixedExpenseID: fixedExpenseID,
-		MatchScore:     scoreNum,
+	row, err := r.q.UpsertTransactionReview(ctx, db.UpsertTransactionReviewParams{
+		BudgetPeriodID:       periodID,
+		TransactionID:        transactionID,
+		MatchedTransactionID: matchedTransactionID,
+		MatchScore:           scoreNum,
 	})
+	if err != nil {
+		return db.TransactionReview{}, err
+	}
+	return db.TransactionReview{
+		ID: row.ID, BudgetPeriodID: row.BudgetPeriodID, TransactionID: row.TransactionID,
+		MatchedTransactionID: row.MatchedTransactionID, MatchScore: row.MatchScore,
+		Status: row.Status, CreatedAt: row.CreatedAt,
+	}, nil
 }
 
 func (r *transactionReviewRepository) ListPending(ctx context.Context, budgetProfileID uuid.UUID) ([]db.ListPendingTransactionReviewsRow, error) {
@@ -68,7 +84,14 @@ func (r *transactionReviewRepository) GetByID(ctx context.Context, id uuid.UUID)
 	if err == pgx.ErrNoRows {
 		return db.TransactionReview{}, apperr.NotFound("transaction_review", id.String())
 	}
-	return row, err
+	if err != nil {
+		return db.TransactionReview{}, err
+	}
+	return db.TransactionReview{
+		ID: row.ID, BudgetPeriodID: row.BudgetPeriodID, TransactionID: row.TransactionID,
+		MatchedTransactionID: row.MatchedTransactionID, MatchScore: row.MatchScore,
+		Status: row.Status, CreatedAt: row.CreatedAt,
+	}, nil
 }
 
 func (r *transactionReviewRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status string) error {
@@ -100,22 +123,27 @@ func (r *transactionReviewRepository) GetFixedExpenseByAlias(ctx context.Context
 	return row, err
 }
 
-func (r *transactionReviewRepository) GetConfirmedByFixedExpenseAndPeriod(ctx context.Context, fixedExpenseID, periodID uuid.UUID) (db.TransactionReview, error) {
-	row, err := r.q.GetConfirmedReviewByFixedExpense(ctx, db.GetConfirmedReviewByFixedExpenseParams{
-		FixedExpenseID: fixedExpenseID,
-		BudgetPeriodID: periodID,
-	})
+func (r *transactionReviewRepository) GetConfirmedByMatchedTransaction(ctx context.Context, matchedTransactionID uuid.UUID) (db.TransactionReview, error) {
+	row, err := r.q.GetConfirmedReviewByMatchedTransaction(ctx, matchedTransactionID)
 	if err == pgx.ErrNoRows {
-		return db.TransactionReview{}, apperr.NotFound("transaction_review", fixedExpenseID.String())
+		return db.TransactionReview{}, apperr.NotFound("transaction_review", matchedTransactionID.String())
 	}
-	return row, err
+	if err != nil {
+		return db.TransactionReview{}, err
+	}
+	return db.TransactionReview{
+		ID:                   row.ID,
+		BudgetPeriodID:       row.BudgetPeriodID,
+		TransactionID:        row.TransactionID,
+		MatchedTransactionID: row.MatchedTransactionID,
+		MatchScore:           row.MatchScore,
+		Status:               row.Status,
+		CreatedAt:            row.CreatedAt,
+	}, nil
 }
 
-func (r *transactionReviewRepository) ResetByFixedExpenseAndPeriod(ctx context.Context, fixedExpenseID, periodID uuid.UUID) error {
-	return r.q.ResetConfirmedReviewByFixedExpense(ctx, db.ResetConfirmedReviewByFixedExpenseParams{
-		FixedExpenseID: fixedExpenseID,
-		BudgetPeriodID: periodID,
-	})
+func (r *transactionReviewRepository) ResetByMatchedTransaction(ctx context.Context, matchedTransactionID uuid.UUID) error {
+	return r.q.ResetConfirmedReviewByMatchedTransaction(ctx, matchedTransactionID)
 }
 
 func (r *transactionReviewRepository) DeleteAlias(ctx context.Context, fixedExpenseID uuid.UUID, alias string) error {

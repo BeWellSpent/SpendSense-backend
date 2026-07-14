@@ -211,13 +211,13 @@ type TransactionFrequency struct {
 }
 
 type TransactionReview struct {
-	ID             uuid.UUID          `json:"id"`
-	BudgetPeriodID uuid.UUID          `json:"budget_period_id"`
-	TransactionID  uuid.UUID          `json:"transaction_id"`
-	FixedExpenseID uuid.UUID          `json:"fixed_expense_id"`
-	MatchScore     pgtype.Numeric     `json:"match_score"`
-	Status         string             `json:"status"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ID                   uuid.UUID          `json:"id"`
+	BudgetPeriodID       uuid.UUID          `json:"budget_period_id"`
+	TransactionID        uuid.UUID          `json:"transaction_id"`
+	MatchScore           pgtype.Numeric     `json:"match_score"`
+	Status               string             `json:"status"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	MatchedTransactionID uuid.UUID          `json:"matched_transaction_id"`
 }
 
 type TransactionType struct {

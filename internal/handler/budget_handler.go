@@ -709,16 +709,20 @@ func (h *BudgetHandler) ListTransactionReviews(ctx context.Context, req *connect
 		if r.TransactionName != nil {
 			txName = *r.TransactionName
 		}
+		matchedName := ""
+		if r.MatchedTransactionName != nil {
+			matchedName = *r.MatchedTransactionName
+		}
 		review := &v1.TransactionReview{
-			Id:                r.ID.String(),
-			BudgetPeriodId:    r.BudgetPeriodID.String(),
-			TransactionId:     r.TransactionID.String(),
-			FixedExpenseId:    r.FixedExpenseID.String(),
-			MatchScore:        score.Float64,
-			Status:            r.Status,
-			TransactionName:   txName,
-			FixedExpenseName:  r.FixedExpenseName,
-			TransactionAmount: moneyFromNumeric(r.TransactionAmount),
+			Id:                     r.ID.String(),
+			BudgetPeriodId:         r.BudgetPeriodID.String(),
+			TransactionId:          r.TransactionID.String(),
+			MatchScore:             score.Float64,
+			Status:                 r.Status,
+			TransactionName:        txName,
+			TransactionAmount:      moneyFromNumeric(r.TransactionAmount),
+			MatchedTransactionId:   r.MatchedTransactionID.String(),
+			MatchedTransactionName: matchedName,
 		}
 		if r.CreatedAt.Valid {
 			review.CreatedAt = timestamppb.New(r.CreatedAt.Time)
@@ -771,7 +775,7 @@ func (h *BudgetHandler) MarkTransactionForReview(ctx context.Context, req *conne
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	feID, err := uuid.Parse(req.Msg.FixedExpenseId)
+	matchedTxID, err := uuid.Parse(req.Msg.MatchedTransactionId)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -779,18 +783,18 @@ func (h *BudgetHandler) MarkTransactionForReview(ctx context.Context, req *conne
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	review, svcErr := h.transactions.MarkTransactionForReview(ctx, userID, txID, feID, profileID)
+	review, svcErr := h.transactions.MarkTransactionForReview(ctx, userID, txID, matchedTxID, profileID)
 	if svcErr != nil {
 		return nil, toConnectError(svcErr)
 	}
 	scoreF8, _ := review.MatchScore.Float64Value()
 	protoReview := &v1.TransactionReview{
-		Id:             review.ID.String(),
-		BudgetPeriodId: review.BudgetPeriodID.String(),
-		TransactionId:  review.TransactionID.String(),
-		FixedExpenseId: review.FixedExpenseID.String(),
-		MatchScore:     scoreF8.Float64,
-		Status:         string(review.Status),
+		Id:                   review.ID.String(),
+		BudgetPeriodId:       review.BudgetPeriodID.String(),
+		TransactionId:        review.TransactionID.String(),
+		MatchedTransactionId: review.MatchedTransactionID.String(),
+		MatchScore:           scoreF8.Float64,
+		Status:               string(review.Status),
 	}
 	if review.CreatedAt.Valid {
 		protoReview.CreatedAt = timestamppb.New(review.CreatedAt.Time)
